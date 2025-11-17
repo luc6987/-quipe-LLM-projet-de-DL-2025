@@ -3,6 +3,7 @@ cache/
 output/
 .ipynb_checkpoints/
 .mypy_cache/
+.kaggle/
 
 # macOS
 .DS_Store
