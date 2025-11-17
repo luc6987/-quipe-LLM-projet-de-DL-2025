@@ -1,0 +1,5 @@
+data/
+cache/
+output/
+.ipynb_checkpoints/
+.mypy_cache/
