@@ -3,3 +3,17 @@ cache/
 output/
 .ipynb_checkpoints/
 .mypy_cache/
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
