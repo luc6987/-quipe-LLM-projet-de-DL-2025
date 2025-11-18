@@ -1,47 +1,47 @@
-# 策略一：利用194个表格特征建立强大的基线 (GBDT)
+# Strategy 1: Build a Strong Baseline Using 194 Tabular Features (GBDT)
 
-## 概述
+## Overview
 
-本实现使用XGBoost梯度提升决策树模型，专注于利用194个表格特征（元数据）来建立强大的基线模型。
+This implementation uses XGBoost gradient boosting decision tree model, focusing on leveraging 194 tabular features (metadata) to build a strong baseline model.
 
-## 核心特点
+## Core Features
 
-1. **只使用表格特征**：排除文本特征，专注于元数据（194个特征）
-2. **特征工程**：创建关键比率特征
-   - `follower_following_ratio`: 粉丝/关注比率（黄金特征）
-   - `user_activity_rate`: 用户活动率
-   - `tweet_engagement_rate`: 推文参与率
-3. **5折分层交叉验证**：确保模型评估的可靠性
-4. **完整的预处理流程**：缺失值处理、分类特征编码
+1. **Tabular Features Only**: Exclude text features, focus on metadata (194 features)
+2. **Feature Engineering**: Create key ratio features
+   - `follower_following_ratio`: Follower/following ratio (golden feature)
+   - `user_activity_rate`: User activity rate
+   - `tweet_engagement_rate`: Tweet engagement rate
+3. **5-Fold Stratified Cross-Validation**: Ensure reliable model evaluation
+4. **Complete Preprocessing Pipeline**: Missing value handling, categorical feature encoding
 
-## 文件说明
+## File Description
 
-- `xgboost_baseline.py`: 完整实现，处理全部训练数据
-- `test_xgboost.py`: 快速测试版本（使用前10000行数据）
+- `xgboost_baseline.py`: Complete implementation, processes all training data
+- `test_xgboost.py`: Quick test version (uses first 10000 rows of data)
 
-## 快速测试
+## Quick Test
 
-运行快速测试版本（约1-2分钟）：
+Run the quick test version (approximately 1-2 minutes):
 
 ```bash
 python3 test_xgboost.py
 ```
 
-预期结果：约84-85%的交叉验证准确率
+Expected result: Approximately 84-85% cross-validation accuracy
 
-## 完整训练
+## Full Training
 
-运行完整版本（处理全部154k训练数据，可能需要10-30分钟）：
+Run the complete version (processes all 154k training data, may take 10-30 minutes):
 
 ```bash
 python3 xgboost_baseline.py
 ```
 
-输出文件：`xgboost_baseline.csv`
+Output file: `xgboost_baseline.csv`
 
-## 模型参数
+## Model Parameters
 
-当前使用的XGBoost参数：
+Current XGBoost parameters used:
 
 - `max_depth`: 6
 - `learning_rate`: 0.1
@@ -53,21 +53,16 @@ python3 xgboost_baseline.py
 - `reg_alpha`: 0.1
 - `reg_lambda`: 1.0
 
-## 性能对比
+## Performance Comparison
 
-- **Logistic Regression基线**（使用文本特征）: ~62.57%
-- **XGBoost基线**（使用194个表格特征）: ~84-85%
+- **Logistic Regression Baseline** (using text features): ~62.57%
+- **XGBoost Baseline** (using 194 tabular features): ~84-85%
 
-这证明了元数据特征在此问题中的重要性。
+This demonstrates the importance of metadata features in this problem.
 
-## 下一步优化
+## Next Steps for Optimization
 
-1. 超参数调优（使用Optuna或GridSearch）
-2. 添加更多特征工程
-3. 尝试LightGBM作为替代
-4. 集成多个模型
-
-
-
-
-
+1. Hyperparameter tuning (using Optuna or GridSearch)
+2. Add more feature engineering
+3. Try LightGBM as an alternative
+4. Ensemble multiple models

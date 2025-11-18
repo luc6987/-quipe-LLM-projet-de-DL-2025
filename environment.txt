@@ -3,3 +3,7 @@ pandas
 xgboost
 scikit-learn
 kaggle
+optuna
+shap
+torch
+torchvision

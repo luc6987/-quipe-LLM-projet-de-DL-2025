@@ -1,0 +1,13 @@
+# Dependencies for Complete XGBoost Solution
+# 完整XGBoost解决方案的依赖项
+
+pandas>=1.5.0
+numpy>=1.23.0
+xgboost>=2.0.0
+scikit-learn>=1.2.0
+optuna>=3.0.0
+shap>=0.41.0
+matplotlib>=3.6.0
+torch>=1.13.0  # For GPU detection
+kaggle>=1.5.0  # For Kaggle API submission
+

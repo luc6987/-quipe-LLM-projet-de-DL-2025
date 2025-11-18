@@ -1,13 +1,13 @@
 """
-数据清洗和降维脚本
-对提取的特征进行清洗、特征工程和降维处理
-适用于Kaggle Influencer预测竞赛
+数据清洗和降维脚本 / Data cleaning and dimensionality reduction script
+对提取的特征进行清洗、特征工程和降维处理 / Clean, feature engineering and dimensionality reduction for extracted features
+适用于Kaggle Influencer预测竞赛 / For Kaggle Influencer prediction competition
 """
 
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, RobustScaler
-# PCA降维已移除，保留原特征
+# PCA降维已移除，保留原特征 / PCA dimensionality reduction removed, keep original features
 from sklearn.impute import SimpleImputer
 from datetime import datetime
 import warnings
@@ -16,51 +16,51 @@ warnings.filterwarnings('ignore')
 
 def load_data(input_file):
     """
-    加载提取的特征数据
+    加载提取的特征数据 / Load extracted feature data
     
     Args:
-        input_file: 输入的CSV文件路径
+        input_file: 输入的CSV文件路径 / Input CSV file path
         
     Returns:
-        DataFrame: 加载的数据
+        DataFrame: 加载的数据 / Loaded data
     """
     import os
     
-    print(f"正在加载数据: {input_file}")
+    print(f"Loading data: {input_file}")
     
-    # 检查文件是否存在
+    # 检查文件是否存在 / Check if file exists
     if not os.path.exists(input_file):
-        raise FileNotFoundError(f"文件不存在: {input_file}")
+        raise FileNotFoundError(f"File does not exist: {input_file}")
     
-    # 获取文件大小
+    # 获取文件大小 / Get file size
     file_size = os.path.getsize(input_file) / (1024 * 1024)  # MB
-    print(f"  文件大小: {file_size:.2f} MB")
+    print(f"  File size: {file_size:.2f} MB")
     
-    # 对于大文件（>100MB），直接使用分块读取以避免超时
+    # 对于大文件（>100MB），直接使用分块读取以避免超时 / For large files (>100MB), use chunked reading to avoid timeout
     if file_size > 100:
-        print("  文件较大，使用优化的分块读取策略...")
-        print("  步骤1: 快速读取前几行以确定列结构...")
+        print("  File is large, using optimized chunked reading strategy...")
+        print("  Step 1: Quickly read first few rows to determine column structure...")
         
-        # 尝试使用C引擎读取（快速），如果超时则使用Python引擎（稳定但慢）
-        print("  尝试使用C引擎读取...")
+        # 尝试使用C引擎读取（快速），如果超时则使用Python引擎（稳定但慢） / Try C engine (fast), if timeout use Python engine (stable but slow)
+        print("  Attempting to read with C engine...")
         use_python_engine = False
         
-        # 先尝试读取少量行来确定列结构
+        # 先尝试读取少量行来确定列结构 / Try reading a few rows first to determine column structure
         try:
-            print("    步骤1a: 读取前10行以确定列结构...")
-            # 使用更小的样本和更短的超时
+            print("    Step 1a: Reading first 10 rows to determine column structure...")
+            # 使用更小的样本和更短的超时 / Use smaller sample and shorter timeout
             sample = pd.read_csv(input_file, nrows=10, low_memory=False, engine='c')
-            print(f"  成功！列数: {len(sample.columns)}")
+            print(f"  Success! Column count: {len(sample.columns)}")
             
-            # 为object类型列创建dtype字典
+            # 为object类型列创建dtype字典 / Create dtype dictionary for object type columns
             dtype_dict = {}
             for col in sample.columns:
                 if sample[col].dtype == 'object':
                     dtype_dict[col] = 'object'
             
-            print(f"  步骤2: 使用C引擎分块读取（快速模式）...")
+            print(f"  Step 2: Using C engine chunked reading (fast mode)...")
             chunk_list = []
-            chunk_size = 10000  # 使用更大的chunk size以减少迭代次数
+            chunk_size = 10000  # 使用更大的chunk size以减少迭代次数 / Use larger chunk size to reduce iterations
             total_rows = 0
             
             reader = pd.read_csv(
@@ -75,46 +75,46 @@ def load_data(input_file):
                 chunk_list.append(chunk)
                 total_rows += len(chunk)
                 if (i + 1) % 10 == 0:
-                    print(f"    已读取 {total_rows:,} 行...")
+                    print(f"    Read {total_rows:,} rows...")
             
-            print(f"  步骤3: 合并所有分块...")
+            print(f"  Step 3: Merging all chunks...")
             df = pd.concat(chunk_list, ignore_index=True)
-            print(f"  数据形状: {df.shape}")
-            print(f"  列数: {len(df.columns)}")
-            print(f"  内存使用: {df.memory_usage(deep=True).sum() / (1024 * 1024):.2f} MB")
+            print(f"  Data shape: {df.shape}")
+            print(f"  Column count: {len(df.columns)}")
+            print(f"  Memory usage: {df.memory_usage(deep=True).sum() / (1024 * 1024):.2f} MB")
             return df
             
         except (TimeoutError, Exception) as e:
             error_msg = str(e)
             if 'timeout' in error_msg.lower() or 'timed out' in error_msg.lower():
-                print(f"  C引擎读取超时: {e}")
+                print(f"  C engine read timeout: {e}")
             else:
-                print(f"  C引擎读取失败: {e}")
-            print("  切换到Python引擎（较慢但更稳定，不会超时）...")
+                print(f"  C engine read failed: {e}")
+            print("  Switching to Python engine (slower but more stable, no timeout)...")
             use_python_engine = True
         
-        # 如果C引擎失败，使用Python引擎
+        # 如果C引擎失败，使用Python引擎 / If C engine fails, use Python engine
         if use_python_engine:
-            print("  使用Python引擎分块读取（稳定模式）...")
+            print("  Using Python engine chunked reading (stable mode)...")
             try:
-                # 先读取前几行确定列结构，使用更稳健的方法
-                print("    尝试读取样本行...")
+                # 先读取前几行确定列结构，使用更稳健的方法 / Read first few rows to determine column structure, use more robust method
+                print("    Attempting to read sample rows...")
                 try:
                     sample = pd.read_csv(input_file, nrows=5, engine='python', low_memory=False)
-                    print(f"  成功读取样本，列数: {len(sample.columns)}")
+                    print(f"  Successfully read sample, column count: {len(sample.columns)}")
                 except pd.errors.EmptyDataError:
-                    # 如果读取样本失败，尝试直接读取整个文件
-                    print("  样本读取失败，尝试直接读取整个文件...")
+                    # 如果读取样本失败，尝试直接读取整个文件 / If sample read fails, try reading entire file directly
+                    print("  Sample read failed, attempting to read entire file directly...")
                     df = pd.read_csv(input_file, engine='python', low_memory=False)
-                    print(f"  成功！数据形状: {df.shape}")
+                    print(f"  Success! Data shape: {df.shape}")
                     return df
                 
                 chunk_list = []
-                chunk_size = 10000  # 使用更大的chunk size
+                chunk_size = 10000  # 使用更大的chunk size / Use larger chunk size
                 total_rows = 0
                 
-                # 使用try-except处理可能的空chunk
-                print("    开始分块读取...")
+                # 使用try-except处理可能的空chunk / Use try-except to handle possible empty chunks
+                print("    Starting chunked reading...")
                 reader = pd.read_csv(
                     input_file,
                     chunksize=chunk_size,
@@ -124,134 +124,134 @@ def load_data(input_file):
                 
                 chunk_count = 0
                 for i, chunk in enumerate(reader):
-                    if len(chunk) > 0:  # 只处理非空chunk
+                    if len(chunk) > 0:  # 只处理非空chunk / Only process non-empty chunks
                         chunk_list.append(chunk)
                         total_rows += len(chunk)
                         chunk_count += 1
                         if chunk_count % 10 == 0:
-                            print(f"    已读取 {total_rows:,} 行...")
+                            print(f"    Read {total_rows:,} rows...")
                     else:
-                        print(f"    警告: 第 {i+1} 个chunk为空，跳过")
-                        break  # 如果遇到空chunk，可能已经读完
+                        print(f"    Warning: Chunk {i+1} is empty, skipping")
+                        break  # 如果遇到空chunk，可能已经读完 / If empty chunk encountered, may have finished reading
                 
                 if len(chunk_list) == 0:
-                    raise ValueError("没有读取到任何数据")
+                    raise ValueError("No data read")
                 
-                print(f"  合并所有分块...")
+                print(f"  Merging all chunks...")
                 df = pd.concat(chunk_list, ignore_index=True)
-                print(f"  数据形状: {df.shape}")
-                print(f"  列数: {len(df.columns)}")
+                print(f"  Data shape: {df.shape}")
+                print(f"  Column count: {len(df.columns)}")
                 return df
             except pd.errors.EmptyDataError as e:
-                print(f"  错误: 文件为空或无法解析: {e}")
-                # 尝试直接读取整个文件
-                print("  尝试直接读取整个文件...")
+                print(f"  Error: File is empty or cannot be parsed: {e}")
+                # 尝试直接读取整个文件 / Try reading entire file directly
+                print("  Attempting to read entire file directly...")
                 try:
                     df = pd.read_csv(input_file, engine='python', low_memory=False)
-                    print(f"  成功！数据形状: {df.shape}")
+                    print(f"  Success! Data shape: {df.shape}")
                     return df
                 except Exception as e2:
-                    raise ValueError(f"无法读取文件: {e2}")
+                    raise ValueError(f"Cannot read file: {e2}")
             except Exception as e:
-                print(f"  Python引擎读取失败: {e}")
-                # 最后尝试：使用更保守的设置
-                print("  尝试使用更保守的设置读取...")
+                print(f"  Python engine read failed: {e}")
+                # 最后尝试：使用更保守的设置 / Last attempt: use more conservative settings
+                print("  Attempting to read with more conservative settings...")
                 try:
-                    # 尝试不同的参数组合
+                    # 尝试不同的参数组合 / Try different parameter combinations
                     read_kwargs = {
                         'engine': 'python',
                         'low_memory': False,
                         'sep': ','
                     }
-                    # 对于pandas >= 1.3.0，使用on_bad_lines
+                    # 对于pandas >= 1.3.0，使用on_bad_lines / For pandas >= 1.3.0, use on_bad_lines
                     try:
                         df = pd.read_csv(input_file, **read_kwargs, on_bad_lines='skip')
                     except TypeError:
-                        # 对于旧版本pandas，使用error_bad_lines=False
+                        # 对于旧版本pandas，使用error_bad_lines=False / For older pandas, use error_bad_lines=False
                         try:
                             df = pd.read_csv(input_file, **read_kwargs, error_bad_lines=False)
                         except TypeError:
-                            # 如果都不支持，直接读取
+                            # 如果都不支持，直接读取 / If neither supported, read directly
                             df = pd.read_csv(input_file, **read_kwargs)
-                    print(f"  成功！数据形状: {df.shape}")
+                    print(f"  Success! Data shape: {df.shape}")
                     return df
                 except Exception as e2:
-                    raise ValueError(f"所有读取方法都失败: {e2}")
+                    raise ValueError(f"All read methods failed: {e2}")
     else:
-        # 对于小文件，直接读取
-        print("  开始读取CSV文件...")
+        # 对于小文件，直接读取 / For small files, read directly
+        print("  Starting to read CSV file...")
         try:
             df = pd.read_csv(input_file, low_memory=False)
-            print(f"  数据形状: {df.shape}")
-            print(f"  列数: {len(df.columns)}")
-            print(f"  内存使用: {df.memory_usage(deep=True).sum() / (1024 * 1024):.2f} MB")
+            print(f"  Data shape: {df.shape}")
+            print(f"  Column count: {len(df.columns)}")
+            print(f"  Memory usage: {df.memory_usage(deep=True).sum() / (1024 * 1024):.2f} MB")
             return df
         except Exception as e:
-            print(f"  直接读取失败: {e}")
-            print("  尝试使用分块读取...")
-            # 如果直接读取失败，尝试分块读取
+            print(f"  Direct read failed: {e}")
+            print("  Attempting chunked reading...")
+            # 如果直接读取失败，尝试分块读取 / If direct read fails, try chunked reading
             chunk_list = []
             chunk_size = 10000
             for i, chunk in enumerate(pd.read_csv(input_file, chunksize=chunk_size, low_memory=False)):
                 chunk_list.append(chunk)
                 if (i + 1) % 10 == 0:
-                    print(f"    已读取 {((i + 1) * chunk_size):,} 行...")
+                    print(f"    Read {((i + 1) * chunk_size):,} rows...")
             df = pd.concat(chunk_list, ignore_index=True)
-            print(f"  数据形状: {df.shape}")
-            print(f"  列数: {len(df.columns)}")
+            print(f"  Data shape: {df.shape}")
+            print(f"  Column count: {len(df.columns)}")
             return df
 
 
 def analyze_data(df):
     """
-    分析数据的基本统计信息
+    分析数据的基本统计信息 / Analyze basic statistical information of data
     
     Args:
-        df: 输入DataFrame
+        df: 输入DataFrame / Input DataFrame
     """
     print("\n" + "="*60)
-    print("数据基本信息分析")
+    print("Basic Data Information Analysis")
     print("="*60)
     
-    print(f"\n数据形状: {df.shape}")
-    print(f"  行数: {df.shape[0]}")
-    print(f"  列数: {df.shape[1]}")
+    print(f"\nData shape: {df.shape}")
+    print(f"  Rows: {df.shape[0]}")
+    print(f"  Columns: {df.shape[1]}")
     
-    # 数据类型统计
-    print("\n数据类型统计:")
+    # 数据类型统计 / Data type statistics
+    print("\nData Type Statistics:")
     dtype_counts = df.dtypes.value_counts()
     for dtype, count in dtype_counts.items():
-        print(f"  {dtype}: {count} 列")
+        print(f"  {dtype}: {count} columns")
     
-    # 缺失值统计
-    print("\n缺失值统计:")
+    # 缺失值统计 / Missing value statistics
+    print("\nMissing Value Statistics:")
     missing_counts = df.isnull().sum()
     missing_ratio = (missing_counts / len(df)) * 100
     missing_info = pd.DataFrame({
-        '缺失数量': missing_counts,
-        '缺失比例(%)': missing_ratio
+        'missing_count': missing_counts,
+        'missing_ratio(%)': missing_ratio
     })
-    missing_info = missing_info[missing_info['缺失数量'] > 0].sort_values('缺失数量', ascending=False)
+    missing_info = missing_info[missing_info['missing_count'] > 0].sort_values('missing_count', ascending=False)
     
     if len(missing_info) > 0:
-        print(f"  有缺失值的列数: {len(missing_info)}")
-        print(f"  缺失值总数: {missing_counts.sum()}")
-        print(f"  缺失值总比例: {(missing_counts.sum() / (len(df) * len(df.columns))) * 100:.2f}%")
-        print("\n  缺失值最多的前10列:")
+        print(f"  Columns with missing values: {len(missing_info)}")
+        print(f"  Total missing values: {missing_counts.sum()}")
+        print(f"  Total missing value ratio: {(missing_counts.sum() / (len(df) * len(df.columns))) * 100:.2f}%")
+        print("\n  Top 10 columns with most missing values:")
         for idx, row in missing_info.head(10).iterrows():
-            print(f"    {idx}: {row['缺失数量']} ({row['缺失比例(%)']:.2f}%)")
+            print(f"    {idx}: {row['missing_count']} ({row['missing_ratio(%)']:.2f}%)")
     else:
-        print("  无缺失值")
+        print("  No missing values")
     
-    # 数值特征统计
+    # 数值特征统计 / Numeric feature statistics
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     if len(numeric_cols) > 0:
-        print(f"\n数值特征统计 (共{len(numeric_cols)}列):")
-        print(f"  均值范围: [{df[numeric_cols].mean().min():.2f}, {df[numeric_cols].mean().max():.2f}]")
-        print(f"  标准差范围: [{df[numeric_cols].std().min():.2f}, {df[numeric_cols].std().max():.2f}]")
+        print(f"\nNumeric Feature Statistics (total {len(numeric_cols)} columns):")
+        print(f"  Mean range: [{df[numeric_cols].mean().min():.2f}, {df[numeric_cols].mean().max():.2f}]")
+        print(f"  Std range: [{df[numeric_cols].std().min():.2f}, {df[numeric_cols].std().max():.2f}]")
         
-        # 检查异常值（使用IQR方法）
-        print("\n  异常值检测 (使用IQR方法):")
+        # 检查异常值（使用IQR方法） / Check outliers (using IQR method)
+        print("\n  Outlier Detection (using IQR method):")
         outlier_counts = {}
         for col in numeric_cols:
             Q1 = df[col].quantile(0.25)
@@ -264,106 +264,120 @@ def analyze_data(df):
                 outlier_counts[col] = outliers
         
         if len(outlier_counts) > 0:
-            print(f"    有异常值的列数: {len(outlier_counts)}")
+            print(f"    Columns with outliers: {len(outlier_counts)}")
             sorted_outliers = sorted(outlier_counts.items(), key=lambda x: x[1], reverse=True)
-            print(f"    异常值最多的前5列:")
+            print(f"    Top 5 columns with most outliers:")
             for col, count in sorted_outliers[:5]:
-                print(f"      {col}: {count} 个异常值")
+                print(f"      {col}: {count} outliers")
         else:
-            print("    未检测到明显异常值")
+            print("    No significant outliers detected")
     
-    # 分类特征统计
+    # 分类特征统计 / Categorical feature statistics
     categorical_cols = df.select_dtypes(exclude=[np.number]).columns.tolist()
     if len(categorical_cols) > 0:
-        print(f"\n分类特征统计 (共{len(categorical_cols)}列):")
+        print(f"\nCategorical Feature Statistics (total {len(categorical_cols)} columns):")
         unique_counts = df[categorical_cols].nunique()
-        print(f"  唯一值数量范围: [{unique_counts.min()}, {unique_counts.max()}]")
-        print(f"  唯一值最多的前5列:")
+        print(f"  Unique value count range: [{unique_counts.min()}, {unique_counts.max()}]")
+        print(f"  Top 5 columns with most unique values:")
         for col in unique_counts.nlargest(5).index:
-            print(f"    {col}: {unique_counts[col]} 个唯一值")
+            print(f"    {col}: {unique_counts[col]} unique values")
 
 
 def remove_duplicates(df):
     """
-    移除重复行
+    移除重复行 / Remove duplicate rows
     
     Args:
-        df: 输入DataFrame
+        df: 输入DataFrame / Input DataFrame
         
     Returns:
-        DataFrame: 去重后的DataFrame
+        DataFrame: 去重后的DataFrame / DataFrame after deduplication
     """
     print("\n" + "="*60)
-    print("移除重复值")
+    print("Removing Duplicates")
     print("="*60)
     
     initial_rows = len(df)
     df_cleaned = df.drop_duplicates()
     removed_rows = initial_rows - len(df_cleaned)
     
-    print(f"  原始行数: {initial_rows}")
-    print(f"  去重后行数: {len(df_cleaned)}")
-    print(f"  移除重复行数: {removed_rows}")
+    print(f"  Original rows: {initial_rows}")
+    print(f"  Rows after deduplication: {len(df_cleaned)}")
+    print(f"  Removed duplicate rows: {removed_rows}")
     
     return df_cleaned
 
 
-def handle_missing_values(df, strategy='median'):
+def handle_missing_values(df, strategy='nan'):
     """
-    处理缺失值
+    处理缺失值 / Handle missing values
+    
+    根据指南，XGBoost可以原生处理np.nan，会自动学习处理缺失值的最佳分裂方向 / According to guide, XGBoost can natively handle np.nan, automatically learns best split direction for missing values
+    因此默认策略是保留np.nan，而不是填充 / Therefore default strategy is to keep np.nan, not fill
     
     Args:
-        df: 输入DataFrame
-        strategy: 填充策略 ('median', 'mean', 'mode', 'drop')
+        df: 输入DataFrame / Input DataFrame
+        strategy: 填充策略 ('nan', 'median', 'mean', 'mode', 'drop') / Filling strategy ('nan', 'median', 'mean', 'mode', 'drop')
+                  'nan'表示保留np.nan（XGBoost推荐） / 'nan' means keep np.nan (XGBoost recommended)
         
     Returns:
-        DataFrame: 处理后的DataFrame
+        DataFrame: 处理后的DataFrame / Processed DataFrame
     """
     print("\n" + "="*60)
-    print(f"处理缺失值 (策略: {strategy})")
+    print(f"Handling Missing Values (strategy: {strategy})")
     print("="*60)
     
     df_cleaned = df.copy()
     
-    # 分离数值列和非数值列
+    # 分离数值列和非数值列 / Separate numeric and non-numeric columns
     numeric_cols = df_cleaned.select_dtypes(include=[np.number]).columns.tolist()
     categorical_cols = df_cleaned.select_dtypes(exclude=[np.number]).columns.tolist()
     
-    print(f"  数值列数: {len(numeric_cols)}")
-    print(f"  分类列数: {len(categorical_cols)}")
+    print(f"  Numeric columns: {len(numeric_cols)}")
+    print(f"  Categorical columns: {len(categorical_cols)}")
     
-    if strategy == 'drop':
-        # 删除包含缺失值的行
+    if strategy == 'nan':
+        # 保留np.nan，让XGBoost处理（推荐策略） / Keep np.nan, let XGBoost handle (recommended strategy)
+        # 只统一转换None、'None'、空字符串等为np.nan / Only uniformly convert None, 'None', empty strings, etc. to np.nan
+        for col in df_cleaned.columns:
+            if df_cleaned[col].dtype == 'object':
+                df_cleaned[col] = df_cleaned[col].replace([None, 'None', ''], np.nan)
+            elif df_cleaned[col].dtype in ['int64', 'float64']:
+                df_cleaned[col] = df_cleaned[col].replace([None], np.nan)
+        print(f"  Keeping np.nan for XGBoost native processing (recommended)")
+        print(f"  Total missing values: {df_cleaned.isnull().sum().sum()}")
+    elif strategy == 'drop':
+        # 删除包含缺失值的行 / Delete rows containing missing values
         initial_rows = len(df_cleaned)
         df_cleaned = df_cleaned.dropna()
         removed_rows = initial_rows - len(df_cleaned)
-        print(f"  删除行数: {removed_rows}")
+        print(f"  Deleted rows: {removed_rows}")
     else:
-        # 对数值列使用指定策略填充
+        # 对数值列使用指定策略填充 / Fill numeric columns using specified strategy
         if len(numeric_cols) > 0:
-            # 确保只处理实际存在的列
+            # 确保只处理实际存在的列 / Ensure only processing existing columns
             existing_numeric_cols = [col for col in numeric_cols if col in df_cleaned.columns]
             if len(existing_numeric_cols) > 0:
-                # 分离全部缺失的列和部分缺失的列
+                # 分离全部缺失的列和部分缺失的列 / Separate fully missing columns and partially missing columns
                 all_missing_cols = []
                 partial_missing_cols = []
                 
                 for col in existing_numeric_cols:
                     missing_count = df_cleaned[col].isnull().sum()
                     if missing_count == len(df_cleaned):
-                        # 全部缺失，用0填充
+                        # 全部缺失，用0填充 / Fully missing, fill with 0
                         all_missing_cols.append(col)
                     elif missing_count > 0:
-                        # 部分缺失，用imputer填充
+                        # 部分缺失，用imputer填充 / Partially missing, fill with imputer
                         partial_missing_cols.append(col)
-                    # 没有缺失的列不需要处理
+                    # 没有缺失的列不需要处理 / Columns without missing values don't need processing
                 
-                # 处理全部缺失的列
+                # 处理全部缺失的列 / Process fully missing columns
                 if len(all_missing_cols) > 0:
                     df_cleaned[all_missing_cols] = 0
-                    print(f"  全部缺失的列用0填充: {len(all_missing_cols)} 列")
+                    print(f"  Fully missing columns filled with 0: {len(all_missing_cols)} columns")
                 
-                # 处理部分缺失的列
+                # 处理部分缺失的列 / Process partially missing columns
                 if len(partial_missing_cols) > 0:
                     if strategy == 'median':
                         imputer = SimpleImputer(strategy='median')
@@ -372,20 +386,20 @@ def handle_missing_values(df, strategy='median'):
                     else:
                         imputer = SimpleImputer(strategy='constant', fill_value=0)
                     
-                    # fit_transform 返回 numpy 数组，需要转换回 DataFrame
+                    # fit_transform 返回 numpy 数组，需要转换回 DataFrame / fit_transform returns numpy array, need to convert back to DataFrame
                     imputed_data = imputer.fit_transform(df_cleaned[partial_missing_cols])
                     df_cleaned[partial_missing_cols] = pd.DataFrame(
                         imputed_data, 
                         columns=partial_missing_cols, 
                         index=df_cleaned.index
                     )
-                    print(f"  部分缺失的列填充完成 (策略: {strategy}): {len(partial_missing_cols)} 列")
+                    print(f"  Partially missing columns filled (strategy: {strategy}): {len(partial_missing_cols)} columns")
                 
-                print(f"  数值列填充完成，共处理 {len(existing_numeric_cols)} 列")
+                print(f"  Numeric column filling complete, processed {len(existing_numeric_cols)} columns")
             else:
-                print(f"  警告: 未找到有效的数值列")
+                print(f"  Warning: No valid numeric columns found")
         
-        # 对分类列使用众数或0填充
+        # 对分类列使用众数或0填充 / Fill categorical columns with mode or 0
         if len(categorical_cols) > 0:
             for col in categorical_cols:
                 if df_cleaned[col].isnull().sum() > 0:
@@ -394,39 +408,39 @@ def handle_missing_values(df, strategy='median'):
                         df_cleaned[col] = df_cleaned[col].fillna(mode_val[0])
                     else:
                         df_cleaned[col] = df_cleaned[col].fillna(0)
-            print(f"  分类列填充完成")
+            print(f"  Categorical column filling complete")
     
-    # 验证
+    # 验证 / Verification
     remaining_missing = df_cleaned.isnull().sum().sum()
-    print(f"  剩余缺失值: {remaining_missing}")
+    print(f"  Remaining missing values: {remaining_missing}")
     
     return df_cleaned
 
 
 def handle_outliers(df, method='clip'):
     """
-    处理异常值
+    处理异常值 / Handle outliers
     
     Args:
-        df: 输入DataFrame
-        method: 处理方法 ('clip', 'remove', 'none')
+        df: 输入DataFrame / Input DataFrame
+        method: 处理方法 ('clip', 'remove', 'none') / Processing method ('clip', 'remove', 'none')
         
     Returns:
-        DataFrame: 处理后的DataFrame
+        DataFrame: 处理后的DataFrame / Processed DataFrame
     """
     print("\n" + "="*60)
-    print(f"处理异常值 (方法: {method})")
+    print(f"Handling Outliers (method: {method})")
     print("="*60)
     
     if method == 'none':
-        print("  跳过异常值处理")
+        print("  Skipping outlier processing")
         return df
     
     df_cleaned = df.copy()
     numeric_cols = df_cleaned.select_dtypes(include=[np.number]).columns.tolist()
     
     if method == 'clip':
-        # 使用IQR方法裁剪异常值
+        # 使用IQR方法裁剪异常值 / Use IQR method to clip outliers
         clipped_count = 0
         for col in numeric_cols:
             Q1 = df_cleaned[col].quantile(0.25)
@@ -439,10 +453,10 @@ def handle_outliers(df, method='clip'):
             df_cleaned[col] = df_cleaned[col].clip(lower=lower_bound, upper=upper_bound)
             clipped_count += before_clip
         
-        print(f"  裁剪的异常值总数: {clipped_count}")
+        print(f"  Total clipped outliers: {clipped_count}")
     
     elif method == 'remove':
-        # 删除包含异常值的行
+        # 删除包含异常值的行 / Delete rows containing outliers
         initial_rows = len(df_cleaned)
         for col in numeric_cols:
             Q1 = df_cleaned[col].quantile(0.25)
@@ -453,102 +467,102 @@ def handle_outliers(df, method='clip'):
             df_cleaned = df_cleaned[(df_cleaned[col] >= lower_bound) & (df_cleaned[col] <= upper_bound)]
         
         removed_rows = initial_rows - len(df_cleaned)
-        print(f"  删除的行数: {removed_rows}")
+        print(f"  Deleted rows: {removed_rows}")
     
     return df_cleaned
 
 
 def remove_low_variance_features(df, threshold=0.01):
     """
-    移除低方差特征
+    移除低方差特征 / Remove low variance features
     
     Args:
-        df: 输入DataFrame
-        threshold: 方差阈值
+        df: 输入DataFrame / Input DataFrame
+        threshold: 方差阈值 / Variance threshold
         
     Returns:
-        DataFrame: 处理后的DataFrame
-        list: 被移除的列名列表
+        DataFrame: 处理后的DataFrame / Processed DataFrame
+        list: 被移除的列名列表 / List of removed column names
     """
     print("\n" + "="*60)
-    print(f"移除低方差特征 (阈值: {threshold})")
+    print(f"Removing Low Variance Features (threshold: {threshold})")
     print("="*60)
     
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     
     if len(numeric_cols) == 0:
-        print("  无数值特征，跳过")
+        print("  No numeric features, skipping")
         return df, []
     
-    # 计算方差
+    # 计算方差 / Calculate variance
     variances = df[numeric_cols].var()
     low_variance_cols = variances[variances < threshold].index.tolist()
     
     if len(low_variance_cols) > 0:
-        print(f"  移除 {len(low_variance_cols)} 个低方差特征")
+        print(f"  Removed {len(low_variance_cols)} low variance features")
         df_cleaned = df.drop(columns=low_variance_cols)
         return df_cleaned, low_variance_cols
     else:
-        print(f"  未发现低方差特征")
+        print(f"  No low variance features found")
         return df, []
 
 
 def remove_highly_correlated_features(df, threshold=0.95):
     """
-    移除高度相关的特征
+    移除高度相关的特征 / Remove highly correlated features
     
     Args:
-        df: 输入DataFrame
-        threshold: 相关系数阈值
+        df: 输入DataFrame / Input DataFrame
+        threshold: 相关系数阈值 / Correlation coefficient threshold
         
     Returns:
-        DataFrame: 处理后的DataFrame
-        list: 被移除的列名列表
+        DataFrame: 处理后的DataFrame / Processed DataFrame
+        list: 被移除的列名列表 / List of removed column names
     """
     print("\n" + "="*60)
-    print(f"移除高度相关特征 (阈值: {threshold})")
+    print(f"Removing Highly Correlated Features (threshold: {threshold})")
     print("="*60)
     
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     
     if len(numeric_cols) < 2:
-        print("  数值特征不足，跳过")
+        print("  Insufficient numeric features, skipping")
         return df, []
     
-    # 计算相关系数矩阵
+    # 计算相关系数矩阵 / Calculate correlation coefficient matrix
     corr_matrix = df[numeric_cols].corr().abs()
     
-    # 找到高度相关的特征对
+    # 找到高度相关的特征对 / Find highly correlated feature pairs
     upper_triangle = corr_matrix.where(
         np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
     )
     
-    # 找出需要移除的列
+    # 找出需要移除的列 / Find columns to remove
     to_remove = [column for column in upper_triangle.columns 
                  if any(upper_triangle[column] > threshold)]
     
     if len(to_remove) > 0:
-        print(f"  移除 {len(to_remove)} 个高度相关特征")
+        print(f"  Removed {len(to_remove)} highly correlated features")
         df_cleaned = df.drop(columns=to_remove)
         return df_cleaned, to_remove
     else:
-        print(f"  未发现高度相关特征")
+        print(f"  No highly correlated features found")
         return df, []
 
 
 def engineer_features(df):
     """
-    特征工程：创建关键比率特征（与 xgboost_baseline.py 一致）
-    这些特征对社交网络预测非常重要
+    特征工程：创建关键比率特征（与 xgboost_baseline.py 一致） / Feature engineering: Create key ratio features (consistent with xgboost_baseline.py)
+    这些特征对社交网络预测非常重要 / These features are very important for social network prediction
     
     Args:
-        df: 输入DataFrame
+        df: 输入DataFrame / Input DataFrame
         
     Returns:
-        DataFrame: 添加了工程特征后的DataFrame
+        DataFrame: 添加了工程特征后的DataFrame / DataFrame with engineered features added
     """
     print("\n" + "="*60)
-    print("特征工程：创建比率特征")
+    print("Feature Engineering: Creating Ratio Features")
     print("="*60)
     
     df_engineered = df.copy()
@@ -566,15 +580,18 @@ def engineer_features(df):
     if user_followers_cols and user_friends_cols:
         followers_col = user_followers_cols[0]
         friends_col = user_friends_cols[0]
+        # 将相关列转换为数值类型（如果它们是字符串）
+        followers_series = pd.to_numeric(df_engineered[followers_col], errors='coerce')
+        friends_series = pd.to_numeric(df_engineered[friends_col], errors='coerce')
         # 只对非缺失值计算比率
-        mask = df_engineered[followers_col].notna() & df_engineered[friends_col].notna()
+        mask = followers_series.notna() & friends_series.notna()
         df_engineered['follower_following_ratio'] = 0.0
         df_engineered.loc[mask, 'follower_following_ratio'] = (
-            df_engineered.loc[mask, followers_col] / 
-            (df_engineered.loc[mask, friends_col] + 1)
+            followers_series.loc[mask] / 
+            (friends_series.loc[mask] + 1)
         )
-        print(f"  ✓ 创建: follower_following_ratio (使用 {followers_col} / {friends_col})")
-        print(f"    非空比率值: {mask.sum()}/{len(df_engineered)}")
+        print(f"  ✓ Created: follower_following_ratio (using {followers_col} / {friends_col})")
+        print(f"    Non-null ratio values: {mask.sum()}/{len(df_engineered)}")
     
     # 2. user_activity_rate
     user_statuses_cols = [col for col in df.columns if 'statuses_count' in col.lower() and 'quoted_status' not in col.lower()]
@@ -589,12 +606,12 @@ def engineer_features(df):
         statuses_col = user_statuses_cols[0]
         created_col = user_created_cols[0]
         
-        # 计算账户年龄
+        # 计算账户年龄 / Calculate account age
         def calculate_account_age(created_at_str):
             if pd.isna(created_at_str):
                 return None
             try:
-                # Twitter created_at格式: "Wed Mar 17 12:59:53 +0000 2021"
+                # Twitter created_at格式: "Wed Mar 17 12:59:53 +0000 2021" / Twitter created_at format: "Wed Mar 17 12:59:53 +0000 2021"
                 created_at = datetime.strptime(created_at_str, "%a %b %d %H:%M:%S %z %Y")
                 now = datetime.now(created_at.tzinfo)
                 return (now - created_at).days
@@ -604,15 +621,19 @@ def engineer_features(df):
         account_ages = df_engineered[created_col].apply(calculate_account_age)
         df_engineered['account_age_days'] = account_ages
         
-        # 计算活动率（只对有效值计算）
-        mask = df_engineered[statuses_col].notna() & df_engineered['account_age_days'].notna()
+        # 将statuses_col转换为数值类型（如果它是字符串） / Convert statuses_col to numeric type (if it's a string)
+        statuses_series = pd.to_numeric(df_engineered[statuses_col], errors='coerce')
+        account_age_series = pd.to_numeric(df_engineered['account_age_days'], errors='coerce')
+        
+        # 计算活动率（只对有效值计算） / Calculate activity rate (only for valid values)
+        mask = statuses_series.notna() & account_age_series.notna()
         df_engineered['user_activity_rate'] = 0.0
         df_engineered.loc[mask, 'user_activity_rate'] = (
-            df_engineered.loc[mask, statuses_col] / 
-            (df_engineered.loc[mask, 'account_age_days'] + 1)
+            statuses_series.loc[mask] / 
+            (account_age_series.loc[mask] + 1)
         )
-        print(f"  ✓ 创建: user_activity_rate (使用 {statuses_col} / account_age_days)")
-        print(f"    非空活动率值: {mask.sum()}/{len(df_engineered)}")
+        print(f"  ✓ Created: user_activity_rate (using {statuses_col} / account_age_days)")
+        print(f"    Non-null activity rate values: {mask.sum()}/{len(df_engineered)}")
     
     # 3. tweet_engagement_rate
     retweet_cols = [col for col in df.columns if 'retweet_count' in col.lower() and 'quoted_status' not in col.lower()]
@@ -628,143 +649,167 @@ def engineer_features(df):
         favorite_col = favorite_cols[0]
         followers_col = user_followers_cols[0]
         
-        # 只对有效值计算参与率
-        mask = (df_engineered[retweet_col].notna() & 
-                df_engineered[favorite_col].notna() & 
-                df_engineered[followers_col].notna())
+        # 将相关列转换为数值类型（如果它们是字符串） / Convert related columns to numeric type (if they are strings)
+        retweet_series = pd.to_numeric(df_engineered[retweet_col], errors='coerce')
+        favorite_series = pd.to_numeric(df_engineered[favorite_col], errors='coerce')
+        followers_series = pd.to_numeric(df_engineered[followers_col], errors='coerce')
+        
+        # 只对有效值计算参与率 / Only calculate engagement rate for valid values
+        mask = (retweet_series.notna() & 
+                favorite_series.notna() & 
+                followers_series.notna())
         df_engineered['tweet_engagement_rate'] = 0.0
         df_engineered.loc[mask, 'tweet_engagement_rate'] = (
-            (df_engineered.loc[mask, retweet_col] + 
-             df_engineered.loc[mask, favorite_col]) / 
-            (df_engineered.loc[mask, followers_col] + 1)
+            (retweet_series.loc[mask] + 
+             favorite_series.loc[mask]) / 
+            (followers_series.loc[mask] + 1)
         )
-        print(f"  ✓ 创建: tweet_engagement_rate")
-        print(f"    非空参与率值: {mask.sum()}/{len(df_engineered)}")
+        print(f"  ✓ Created: tweet_engagement_rate")
+        print(f"    Non-null engagement rate values: {mask.sum()}/{len(df_engineered)}")
     
-    print(f"  特征工程完成，新增特征数: {len(df_engineered.columns) - len(df.columns)}")
+    print(f"  Feature engineering complete, new features: {len(df_engineered.columns) - len(df.columns)}")
     
     return df_engineered
 
 
-def encode_categorical_features(df):
+def encode_categorical_features(df, use_ordinal=True):
     """
-    编码分类特征为数值
+    编码分类特征为数值 / Encode categorical features to numeric
+    
+    根据指南，对于高基数分类特征（如source），使用OrdinalEncoder / According to guide, for high cardinality categorical features (like source), use OrdinalEncoder
+    XGBoost可以高效处理Ordinal编码的整数 / XGBoost can efficiently handle Ordinal encoded integers
     
     Args:
-        df: 输入DataFrame
+        df: 输入DataFrame / Input DataFrame
+        use_ordinal: 是否使用OrdinalEncoder（推荐，适合XGBoost） / Whether to use OrdinalEncoder (recommended, suitable for XGBoost)
         
     Returns:
-        DataFrame: 编码后的DataFrame
+        DataFrame: 编码后的DataFrame / Encoded DataFrame
     """
+    from sklearn.preprocessing import OrdinalEncoder
+    
     print("\n" + "="*60)
-    print("编码分类特征")
+    print("Encoding Categorical Features")
     print("="*60)
     
     df_encoded = df.copy()
     categorical_cols = df_encoded.select_dtypes(exclude=[np.number]).columns.tolist()
     
     if len(categorical_cols) == 0:
-        print("  无分类特征，跳过")
+        print("  No categorical features, skipping")
         return df_encoded
     
-    print(f"  需要编码的分类特征数: {len(categorical_cols)}")
+    print(f"  Categorical features to encode: {len(categorical_cols)}")
     
-    # 对于每个分类特征，使用标签编码或独热编码
-    # 如果唯一值数量少（<10），使用独热编码；否则使用标签编码
-    for col in categorical_cols:
-        unique_count = df_encoded[col].nunique()
+    if use_ordinal:
+        # 使用OrdinalEncoder（推荐，适合XGBoost） / Use OrdinalEncoder (recommended, suitable for XGBoost)
+        encoder = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
         
-        if unique_count < 10 and unique_count > 1:
-            # 使用独热编码
-            dummies = pd.get_dummies(df_encoded[col], prefix=col, drop_first=True)
-            df_encoded = pd.concat([df_encoded.drop(columns=[col]), dummies], axis=1)
-            print(f"    {col}: 独热编码 ({unique_count} 个唯一值)")
-        else:
-            # 使用标签编码（转换为数值）
-            df_encoded[col] = pd.Categorical(df_encoded[col]).codes
-            print(f"    {col}: 标签编码 ({unique_count} 个唯一值)")
+        # 准备数据：将NaN转换为字符串'unknown' / Prepare data: convert NaN to string 'unknown'
+        for col in categorical_cols:
+            unique_count = df_encoded[col].nunique()
+            col_data = df_encoded[col].fillna('unknown').values.reshape(-1, 1)
+            
+            encoded_data = encoder.fit_transform(col_data)
+            df_encoded[col] = encoded_data.flatten()
+            
+            print(f"    {col}: Ordinal encoding ({unique_count} unique values)")
+    else:
+        # 旧方法：根据唯一值数量选择编码方式 / Old method: choose encoding based on unique value count
+        for col in categorical_cols:
+            unique_count = df_encoded[col].nunique()
+            
+            if unique_count < 10 and unique_count > 1:
+                # 使用独热编码 / Use one-hot encoding
+                dummies = pd.get_dummies(df_encoded[col], prefix=col, drop_first=True)
+                df_encoded = pd.concat([df_encoded.drop(columns=[col]), dummies], axis=1)
+                print(f"    {col}: One-hot encoding ({unique_count} unique values)")
+            else:
+                # 使用标签编码（转换为数值） / Use label encoding (convert to numeric)
+                df_encoded[col] = pd.Categorical(df_encoded[col]).codes
+                print(f"    {col}: Label encoding ({unique_count} unique values)")
     
-    print(f"  编码完成，当前列数: {len(df_encoded.columns)}")
+    print(f"  Encoding complete, current column count: {len(df_encoded.columns)}")
     
     return df_encoded
 
 
 def normalize_features(df, method='standard'):
     """
-    标准化/归一化特征
+    标准化/归一化特征 / Normalize/standardize features
     
     Args:
-        df: 输入DataFrame
-        method: 标准化方法 ('standard', 'robust', 'none')
+        df: 输入DataFrame / Input DataFrame
+        method: 标准化方法 ('standard', 'robust', 'none') / Normalization method ('standard', 'robust', 'none')
         
     Returns:
-        DataFrame: 标准化后的DataFrame
-        scaler: 使用的scaler对象（用于后续数据转换）
+        DataFrame: 标准化后的DataFrame / Normalized DataFrame
+        scaler: 使用的scaler对象（用于后续数据转换） / Scaler object used (for subsequent data transformation)
     """
     print("\n" + "="*60)
-    print(f"特征标准化 (方法: {method})")
+    print(f"Feature Normalization (method: {method})")
     print("="*60)
     
     if method == 'none':
-        print("  跳过标准化")
+        print("  Skipping normalization")
         return df, None
     
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     
     if len(numeric_cols) == 0:
-        print("  无数值特征，跳过")
+        print("  No numeric features, skipping")
         return df, None
     
     df_normalized = df.copy()
     
-    # 确保只处理实际存在的列
+    # 确保只处理实际存在的列 / Ensure only processing existing columns
     existing_numeric_cols = [col for col in numeric_cols if col in df_normalized.columns]
     
     if len(existing_numeric_cols) == 0:
-        print("  未找到有效的数值特征，跳过标准化")
+        print("  No valid numeric features found, skipping normalization")
         return df, None
     
     if method == 'standard':
         scaler = StandardScaler()
-        print(f"  使用StandardScaler标准化 {len(existing_numeric_cols)} 个数值特征")
+        print(f"  Using StandardScaler to normalize {len(existing_numeric_cols)} numeric features")
     elif method == 'robust':
         scaler = RobustScaler()
-        print(f"  使用RobustScaler标准化 {len(existing_numeric_cols)} 个数值特征")
+        print(f"  Using RobustScaler to normalize {len(existing_numeric_cols)} numeric features")
     else:
-        print(f"  未知方法，跳过标准化")
+        print(f"  Unknown method, skipping normalization")
         return df, None
     
-    # fit_transform 返回 numpy 数组，需要转换回 DataFrame
+    # fit_transform 返回 numpy 数组，需要转换回 DataFrame / fit_transform returns numpy array, need to convert back to DataFrame
     normalized_data = scaler.fit_transform(df_normalized[existing_numeric_cols])
     df_normalized[existing_numeric_cols] = pd.DataFrame(
         normalized_data,
         columns=existing_numeric_cols,
         index=df_normalized.index
     )
-    print(f"  标准化完成")
+    print(f"  Normalization complete")
     
     return df_normalized, scaler
 
 
 def reduce_dimensionality(df, method='none', n_components=None, variance_ratio=0.95):
     """
-    降维处理（已禁用，保留原特征）
+    降维处理（已禁用，保留原特征） / Dimensionality reduction (disabled, keep original features)
     
     Args:
-        df: 输入DataFrame
-        method: 降维方法（已禁用，始终返回原数据）
-        n_components: 主成分数量（已禁用）
-        variance_ratio: 保留的方差比例（已禁用）
+        df: 输入DataFrame / Input DataFrame
+        method: 降维方法（已禁用，始终返回原数据） / Dimensionality reduction method (disabled, always returns original data)
+        n_components: 主成分数量（已禁用） / Number of principal components (disabled)
+        variance_ratio: 保留的方差比例（已禁用） / Variance ratio to retain (disabled)
         
     Returns:
-        DataFrame: 原始DataFrame（不进行降维）
-        transformer: None（降维已禁用）
+        DataFrame: 原始DataFrame（不进行降维） / Original DataFrame (no dimensionality reduction)
+        transformer: None（降维已禁用） / None (dimensionality reduction disabled)
     """
     print("\n" + "="*60)
-    print(f"降维处理 (方法: {method})")
+    print(f"Dimensionality Reduction (method: {method})")
     print("="*60)
     
-    print("  降维功能已禁用，保留所有原始特征")
+    print("  Dimensionality reduction disabled, keeping all original features")
     return df, None
 
 
@@ -799,52 +844,52 @@ def clean_and_reduce(input_file, output_file='cache/cleaned_features.csv',
         dict: 包含fitted transformers的字典（用于测试集转换）
     """
     print("="*60)
-    print("数据清洗流程（保留原特征）")
+    print("Data Cleaning Pipeline (Keep Original Features)")
     print("="*60)
     
     transformers = {}
     
-    # ========== 训练集处理 ==========
-    print("\n[处理训练集]")
-    # 1. 加载数据
+    # ========== 训练集处理 ========== / Training set processing
+    print("\n[Processing Training Set]")
+    # 1. 加载数据 / Load data
     df_train = load_data(input_file)
     
-    # ========== 如果提供了测试集，先对齐特征列 ==========
+    # ========== 如果提供了测试集，先对齐特征列 ========== / If test set provided, align feature columns first
     if test_input_file and test_output_file:
         import os
         if os.path.exists(test_input_file):
-            print("\n[预对齐特征列]")
-            print("  正在加载测试集以对齐特征列...")
+            print("\n[Pre-aligning Feature Columns]")
+            print("  Loading test set to align feature columns...")
             df_test_preview = load_data(test_input_file)
             
-            # 获取训练集和测试集的所有列
+            # 获取训练集和测试集的所有列 / Get all columns from training and test sets
             train_cols = set(df_train.columns)
             test_cols = set(df_test_preview.columns)
             
-            # 找出差异
+            # 找出差异 / Find differences
             missing_in_test = train_cols - test_cols
             missing_in_train = test_cols - train_cols
             common_cols = train_cols & test_cols
             
-            print(f"  训练集列数: {len(train_cols)}")
-            print(f"  测试集列数: {len(test_cols)}")
-            print(f"  共同列数: {len(common_cols)}")
+            print(f"  Training set columns: {len(train_cols)}")
+            print(f"  Test set columns: {len(test_cols)}")
+            print(f"  Common columns: {len(common_cols)}")
             
             if len(missing_in_test) > 0:
-                print(f"  测试集缺失的列（将在测试集中添加，用NaN填充）: {len(missing_in_test)}")
+                print(f"  Missing columns in test set (will be added to test set, filled with NaN): {len(missing_in_test)}")
             if len(missing_in_train) > 0:
-                print(f"  训练集缺失的列（将在训练集中添加，用NaN填充）: {len(missing_in_train)}")
+                print(f"  Missing columns in training set (will be added to training set, filled with NaN): {len(missing_in_train)}")
             
-            # 确定统一的列列表（按字母顺序排序以确保一致性）
+            # 确定统一的列列表（按字母顺序排序以确保一致性） / Determine unified column list (sorted alphabetically for consistency)
             unified_cols = sorted(list(train_cols | test_cols))
             
-            # 对齐训练集
+            # 对齐训练集 / Align training set
             for col in unified_cols:
                 if col not in df_train.columns:
                     df_train[col] = None
             df_train = df_train[unified_cols]
             
-            print(f"  ✓ 训练集已对齐为 {len(unified_cols)} 列")
+            print(f"  ✓ Training set aligned to {len(unified_cols)} columns")
             
             # 保存统一列列表，用于后续测试集处理
             transformers['unified_columns'] = unified_cols
@@ -946,23 +991,23 @@ def clean_and_reduce(input_file, output_file='cache/cleaned_features.csv',
     if remove_low_var:
         df_train, removed_low_var_cols = remove_low_variance_features(df_train, threshold=0.01)
         if len(removed_low_var_cols) > 0:
-            print(f"  已移除低方差列: {len(removed_low_var_cols)} 个")
+            print(f"  Removed low variance columns: {len(removed_low_var_cols)}")
     
-    # 8. 移除高度相关特征（fit on train）
+    # 8. 移除高度相关特征（fit on train） / Remove highly correlated features (fit on train)
     removed_high_corr_cols = []
     if remove_high_corr:
         df_train, removed_high_corr_cols = remove_highly_correlated_features(df_train, threshold=0.95)
         if len(removed_high_corr_cols) > 0:
-            print(f"  已移除高度相关列: {len(removed_high_corr_cols)} 个")
+            print(f"  Removed highly correlated columns: {len(removed_high_corr_cols)}")
     
-    # 保存要移除的列名
+    # 保存要移除的列名 / Save column names to remove
     transformers['removed_cols'] = removed_low_var_cols + removed_high_corr_cols
     
-    # 9. 标准化特征（fit on train）
-    # 保存标准化前的列名（用于测试集标准化前的对齐）
+    # 9. 标准化特征（fit on train） / Normalize features (fit on train)
+    # 保存标准化前的列名（用于测试集标准化前的对齐） / Save column names before normalization (for test set pre-normalization alignment)
     transformers['train_columns_pre_normalize'] = df_train.columns.tolist()
     
-    # 保存标准化前使用的数值列名
+    # 保存标准化前使用的数值列名 / Save numeric column names used before normalization
     numeric_cols_before_normalize = df_train.select_dtypes(include=[np.number]).columns.tolist()
     transformers['train_numeric_cols_for_scaler'] = numeric_cols_before_normalize
     
@@ -970,82 +1015,82 @@ def clean_and_reduce(input_file, output_file='cache/cleaned_features.csv',
     transformers['scaler'] = scaler
     transformers['scaler_method'] = normalize_method
     
-    # 10. 降维（已禁用，保留原特征）
-    # PCA降维已移除，保留所有原始特征
+    # 10. 降维（已禁用，保留原特征） / Dimensionality reduction (disabled, keep original features)
+    # PCA降维已移除，保留所有原始特征 / PCA dimensionality reduction removed, keep all original features
     if reduce_method != 'none':
-        print("\n警告: reduce_method不为'none'，但PCA降维功能已移除，将保留所有特征")
+        print("\nWarning: reduce_method is not 'none', but PCA dimensionality reduction has been removed, will keep all features")
     
-    # 保存训练集的最终列顺序（用于测试集最终对齐）
+    # 保存训练集的最终列顺序（用于测试集最终对齐） / Save final column order of training set (for test set final alignment)
     transformers['train_columns'] = df_train.columns.tolist()
     
-    # 11. 最终统计
+    # 11. 最终统计 / Final statistics
     print("\n" + "="*60)
-    print("训练集最终数据统计")
+    print("Training Set Final Data Statistics")
     print("="*60)
-    print(f"  最终数据形状: {df_train.shape}")
-    print(f"  最终列数: {len(df_train.columns)}")
-    print(f"  缺失值总数: {df_train.isnull().sum().sum()}")
+    print(f"  Final data shape: {df_train.shape}")
+    print(f"  Final column count: {len(df_train.columns)}")
+    print(f"  Total missing values: {df_train.isnull().sum().sum()}")
     
-    # 12. 保存训练集结果
-    print(f"\n正在保存训练集到: {output_file}")
+    # 12. 保存训练集结果 / Save training set results
+    print(f"\nSaving training set to: {output_file}")
     df_train.to_csv(output_file, index=False)
-    print(f"✓ 成功保存清洗后的训练集数据到 {output_file}")
+    print(f"✓ Successfully saved cleaned training set data to {output_file}")
     
-    # ========== 测试集处理 ==========
+    # ========== 测试集处理 ========== / Test set processing
     df_test = None
     if test_input_file and test_output_file:
-        # 检查测试集输入文件是否存在
+        # 检查测试集输入文件是否存在 / Check if test set input file exists
         import os
         if not os.path.exists(test_input_file):
-            print(f"\n警告: 测试集输入文件不存在: {test_input_file}")
-            print("跳过测试集处理。如果只想处理训练集，这是正常的。")
-            print("如果希望处理测试集，请确保文件存在或使用 --test-input 指定正确的路径。")
+            print(f"\nWarning: Test set input file does not exist: {test_input_file}")
+            print("Skipping test set processing. This is normal if you only want to process the training set.")
+            print("If you want to process the test set, please ensure the file exists or use --test-input to specify the correct path.")
         else:
             print("\n" + "="*60)
-            print("[处理测试集]")
+            print("[Processing Test Set]")
             print("="*60)
             
-            # 1. 加载测试集
+            # 1. 加载测试集 / Load test set
             df_test = load_data(test_input_file)
             
-            # 1.5. 对齐特征列（使用训练集的统一列列表）
+            # 1.5. 对齐特征列（使用训练集的统一列列表） / Align feature columns (using training set unified column list)
             unified_cols = transformers.get('unified_columns')
             if unified_cols:
-                print("\n  对齐测试集特征列...")
+                print("\n  Aligning test set feature columns...")
                 for col in unified_cols:
                     if col not in df_test.columns:
                         df_test[col] = None
                 df_test = df_test[unified_cols]
-                print(f"  ✓ 测试集已对齐为 {len(unified_cols)} 列")
+                print(f"  ✓ Test set aligned to {len(unified_cols)} columns")
             
-            # 2. 跳过移除重复值（测试集必须保持原始行数，以便与ID对应）
-            print("\n  跳过移除重复值（测试集保持原始行数以匹配ID）")
+            # 2. 跳过移除重复值（测试集必须保持原始行数，以便与ID对应） / Skip removing duplicates (test set must keep original row count to match IDs)
+            print("\n  Skipping duplicate removal (test set keeps original row count to match IDs)")
             initial_test_rows = len(df_test)
             
-            # 2.5. 特征工程：创建比率特征（在处理缺失值之前，需要原始数据）
-            # 这必须在编码分类特征之前，因为需要原始的日期字符串和数值
+            # 2.5. 特征工程：创建比率特征（在处理缺失值之前，需要原始数据） / Feature engineering: Create ratio features (before handling missing values, need original data)
+            # 这必须在编码分类特征之前，因为需要原始的日期字符串和数值 / This must be before encoding categorical features, because need original date strings and numeric values
             df_test = engineer_features(df_test)
             
-            # 2.6. 对齐特征工程后的列（确保测试集有训练集的所有工程特征）
+            # 2.6. 对齐特征工程后的列（确保测试集有训练集的所有工程特征） / Align columns after feature engineering (ensure test set has all engineered features from training set)
             train_cols_after_fe = transformers.get('train_columns_after_feature_eng', [])
             if train_cols_after_fe:
                 missing_cols = set(train_cols_after_fe) - set(df_test.columns)
                 extra_cols = set(df_test.columns) - set(train_cols_after_fe)
                 
-                # 添加缺失的列（用0填充）
+                # 添加缺失的列（用0填充） / Add missing columns (fill with 0)
                 if len(missing_cols) > 0:
                     for col in missing_cols:
                         df_test[col] = 0
-                    print(f"  特征工程后对齐：添加了 {len(missing_cols)} 个缺失列")
+                    print(f"  Post-feature-engineering alignment: Added {len(missing_cols)} missing columns")
                 
-                # 移除多余的列
+                # 移除多余的列 / Remove extra columns
                 if len(extra_cols) > 0:
                     df_test = df_test.drop(columns=list(extra_cols))
-                    print(f"  特征工程后对齐：移除了 {len(extra_cols)} 个多余列")
+                    print(f"  Post-feature-engineering alignment: Removed {len(extra_cols)} extra columns")
                 
-                # 确保列顺序一致
+                # 确保列顺序一致 / Ensure column order is consistent
                 df_test = df_test[train_cols_after_fe]
-                print(f"  ✓ 测试集特征工程后对齐为 {len(train_cols_after_fe)} 列")
+                print(f"  ✓ Test set post-feature-engineering alignment: {len(train_cols_after_fe)} columns")
             
             # 3. 处理缺失值（使用训练集的imputer）
             if imputer is not None and 'imputer_cols' in transformers:
@@ -1094,10 +1139,15 @@ def clean_and_reduce(input_file, output_file='cache/cleaned_features.csv',
                             # 对测试集的值进行独热编码
                             dummies = pd.get_dummies(df_test[col], prefix=col, drop_first=True)
                             
+                            # 确保 dummies 的索引与 df_test 匹配
+                            # get_dummies 返回的 DataFrame 索引应该已经与输入匹配，但为了安全起见我们重新对齐
+                            dummies = dummies.reindex(df_test.index, fill_value=0)
+                            
                             # 只保留训练集中存在的列
                             for onehot_col in train_onehot_cols:
                                 if onehot_col in dummies.columns:
-                                    df_test[onehot_col] = dummies[onehot_col]
+                                    df_test[onehot_col] = dummies[onehot_col].values
+                                # 如果测试集中没有这个类别，保持为0（已在上面的初始化中设置）
                             
                             # 删除原始列
                             df_test = df_test.drop(columns=[col])
@@ -1129,41 +1179,41 @@ def clean_and_reduce(input_file, output_file='cache/cleaned_features.csv',
             if len(missing_cols) > 0:
                 for col in missing_cols:
                     df_test[col] = 0
-                print(f"  标准化前对齐：添加了 {len(missing_cols)} 个缺失列")
+                print(f"  Pre-normalization alignment: Added {len(missing_cols)} missing columns")
             
-            # 移除多余的列（特别是独热编码产生的额外列）
+            # 移除多余的列（特别是独热编码产生的额外列） / Remove extra columns (especially those from one-hot encoding)
             if len(extra_cols) > 0:
                 df_test = df_test.drop(columns=list(extra_cols))
-                print(f"  标准化前对齐：移除了 {len(extra_cols)} 个多余列")
+                print(f"  Pre-normalization alignment: Removed {len(extra_cols)} extra columns")
             
-            # 确保列顺序一致
+            # 确保列顺序一致 / Ensure column order is consistent
             df_test = df_test[train_columns_pre_normalize]
             
-            # 8. 标准化（使用训练集的scaler）
+            # 8. 标准化（使用训练集的scaler） / Normalization (using training set scaler)
             scaler = transformers.get('scaler')
             scaler_method = transformers.get('scaler_method', 'none')
             if scaler is not None and scaler_method != 'none':
-                # 获取训练集标准化时使用的列名（使用scaler的实际特征名）
+                # 获取训练集标准化时使用的列名（使用scaler的实际特征名） / Get column names used during training set normalization (using scaler's actual feature names)
                 if hasattr(scaler, 'feature_names_in_') and scaler.feature_names_in_ is not None:
-                    # 使用scaler实际拟合时的特征名（这是最准确的）
+                    # 使用scaler实际拟合时的特征名（这是最准确的） / Use feature names from scaler's actual fit (most accurate)
                     train_scaler_numeric_cols = list(scaler.feature_names_in_)
                 else:
-                    # 如果没有feature_names_in_，使用保存的数值列名
+                    # 如果没有feature_names_in_，使用保存的数值列名 / If no feature_names_in_, use saved numeric column names
                     train_scaler_numeric_cols = transformers.get('train_numeric_cols_for_scaler', [])
                     if not train_scaler_numeric_cols:
-                        # 最后的备选方案：从保存的列名中推断
+                        # 最后的备选方案：从保存的列名中推断 / Last fallback: infer from saved column names
                         train_columns_final = transformers.get('train_columns', [])
                         train_scaler_numeric_cols = train_columns_final
                 
-                # 确保测试集有训练集标准化时需要的所有列
+                # 确保测试集有训练集标准化时需要的所有列 / Ensure test set has all columns needed for training set normalization
                 missing_cols = set(train_scaler_numeric_cols) - set(df_test.columns)
                 extra_cols = set(df_test.columns) - set(train_scaler_numeric_cols)
                 
-                # 添加缺失的列（用0填充）
+                # 添加缺失的列（用0填充） / Add missing columns (fill with 0)
                 if len(missing_cols) > 0:
                     for col in missing_cols:
                         df_test[col] = 0
-                    print(f"  标准化前：添加了 {len(missing_cols)} 个缺失列")
+                    print(f"  Pre-normalization: Added {len(missing_cols)} missing columns")
                 
                 # 移除多余的列（标准化前不需要的列，但保留它们用于后续对齐）
                 # 注意：这里只移除独热编码产生的额外列，不删除所有多余列
@@ -1209,29 +1259,29 @@ def clean_and_reduce(input_file, output_file='cache/cleaned_features.csv',
                 if len(missing_cols) > 0:
                     for col in missing_cols:
                         df_test[col] = 0
-                    print(f"  最终对齐：添加了 {len(missing_cols)} 个缺失列")
+                    print(f"  Final alignment: Added {len(missing_cols)} missing columns")
                 
-                # 移除多余的列
+                # 移除多余的列 / Remove extra columns
                 if len(extra_cols) > 0:
                     df_test = df_test.drop(columns=list(extra_cols))
-                    print(f"  最终对齐：移除了 {len(extra_cols)} 个多余列")
+                    print(f"  Final alignment: Removed {len(extra_cols)} extra columns")
                 
-                # 确保列顺序一致
+                # 确保列顺序一致 / Ensure column order is consistent
                 df_test = df_test[train_columns]
-                print(f"  ✓ 测试集最终对齐为 {len(train_columns)} 列")
+                print(f"  ✓ Test set final alignment: {len(train_columns)} columns")
             
-            # 10. 最终统计
+            # 10. 最终统计 / Final statistics
             print("\n" + "="*60)
-            print("测试集最终数据统计")
+            print("Test Set Final Data Statistics")
             print("="*60)
-            print(f"  最终数据形状: {df_test.shape}")
-            print(f"  最终列数: {len(df_test.columns)}")
-            print(f"  缺失值总数: {df_test.isnull().sum().sum()}")
+            print(f"  Final data shape: {df_test.shape}")
+            print(f"  Final column count: {len(df_test.columns)}")
+            print(f"  Total missing values: {df_test.isnull().sum().sum()}")
             
-            # 11. 保存测试集结果
-            print(f"\n正在保存测试集到: {test_output_file}")
+            # 11. 保存测试集结果 / Save test set results
+            print(f"\nSaving test set to: {test_output_file}")
             df_test.to_csv(test_output_file, index=False)
-            print(f"✓ 成功保存清洗后的测试集数据到 {test_output_file}")
+            print(f"✓ Successfully saved cleaned test set data to {test_output_file}")
     
     return df_train, transformers, df_test
 
@@ -1252,37 +1302,37 @@ def main():
     os.chdir(project_root)
     
     try:
-        parser = argparse.ArgumentParser(description='数据清洗和降维脚本')
+        parser = argparse.ArgumentParser(description='Data cleaning and dimensionality reduction script')
         parser.add_argument('--input', type=str, default='cache/extracted_features.csv',
-                            help='训练集输入CSV文件路径')
+                            help='Training set input CSV file path')
         parser.add_argument('--output', type=str, default='cache/cleaned_features.csv',
-                            help='训练集输出CSV文件路径')
+                            help='Training set output CSV file path')
         parser.add_argument('--test-input', type=str, default='cache/test_extracted_features.csv',
-                            help='测试集输入CSV文件路径')
+                            help='Test set input CSV file path')
         parser.add_argument('--test-output', type=str, default='cache/test_cleaned_features.csv',
-                            help='测试集输出CSV文件路径')
+                            help='Test set output CSV file path')
         parser.add_argument('--missing-strategy', type=str, default='median',
                             choices=['median', 'mean', 'mode', 'drop'],
-                            help='缺失值处理策略')
+                            help='Missing value handling strategy')
         parser.add_argument('--outlier-method', type=str, default='clip',
                             choices=['clip', 'remove', 'none'],
-                            help='异常值处理方法')
+                            help='Outlier handling method')
         parser.add_argument('--remove-low-var', action='store_true', default=False,
-                            help='移除低方差特征（默认：不移除，适合XGBoost）')
+                            help='Remove low variance features (default: False, suitable for XGBoost)')
         parser.add_argument('--remove-high-corr', action='store_true', default=False,
-                            help='移除高度相关特征（默认：不移除，适合XGBoost）')
+                            help='Remove highly correlated features (default: False, suitable for XGBoost)')
         parser.add_argument('--normalize', type=str, default='none',
                             choices=['standard', 'robust', 'none'],
-                            help='标准化方法（默认：none，XGBoost树模型不需要标准化）')
+                            help='Normalization method (default: none, XGBoost tree models do not need normalization)')
         parser.add_argument('--reduce', type=str, default='none',
                             choices=['pca', 'none'],
-                            help='降维方法（已禁用，保留原特征）')
+                            help='Dimensionality reduction method (disabled, keep original features)')
         parser.add_argument('--variance-ratio', type=float, default=0.95,
-                            help='PCA保留的方差比例（已禁用）')
+                            help='PCA variance ratio to retain (disabled)')
         
         args = parser.parse_args()
         
-        print(f"项目根目录: {project_root}")
+        print(f"Project root directory: {project_root}")
         
         df_train, transformers, df_test = clean_and_reduce(
             input_file=args.input,

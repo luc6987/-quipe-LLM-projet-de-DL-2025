@@ -4,6 +4,7 @@ output/
 .ipynb_checkpoints/
 .mypy_cache/
 .kaggle/
+.env
 
 # macOS
 .DS_Store

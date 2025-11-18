@@ -1,5 +1,5 @@
 """
-快速测试XGBoost基线模型
+快速测试XGBoost基线模型 / Quick test XGBoost baseline model
 """
 import json
 import numpy as np
@@ -13,10 +13,10 @@ import warnings
 warnings.filterwarnings('ignore')
 
 print("="*60)
-print("快速测试：XGBoost基线模型")
+print("Quick Test: XGBoost Baseline Model")
 print("="*60)
 
-# 1. 加载数据（使用前10000行进行快速测试）
+# 1. 加载数据（使用前10000行进行快速测试） / Load data (use first 10000 rows for quick test)
 print("\n1. Loading data (first 10000 rows for quick test)...")
 records = []
 with open('train.jsonl', 'r') as f:
@@ -33,19 +33,19 @@ print(f"   Loaded {len(records)} records")
 train_data = json_normalize(records)
 print(f"   Shape: {train_data.shape}")
 
-# 2. 分离特征和标签
+# 2. 分离特征和标签 / Separate features and labels
 y_train = train_data['label']
 print(f"\n2. Labels distribution:")
 print(f"   Class 0: {(y_train == 0).sum()}")
 print(f"   Class 1: {(y_train == 1).sum()}")
 
-# 3. 提取表格特征（排除文本）
+# 3. 提取表格特征（排除文本） / Extract tabular features (exclude text)
 exclude_cols = ['text', 'extended_tweet.full_text', 'label']
 table_cols = [col for col in train_data.columns if col not in exclude_cols]
 X_train = train_data[table_cols].copy()
 print(f"\n3. Extracted {len(table_cols)} table features")
 
-# 4. 处理缺失值
+# 4. 处理缺失值 / Handle missing values
 print("\n4. Handling missing values...")
 numeric_cols = X_train.select_dtypes(include=[np.number]).columns
 for col in numeric_cols:
@@ -55,7 +55,7 @@ non_numeric_cols = X_train.select_dtypes(exclude=[np.number]).columns
 for col in non_numeric_cols:
     X_train[col] = X_train[col].fillna(0)
 
-# 5. 编码分类特征
+# 5. 编码分类特征 / Encode categorical features
 print("5. Encoding categorical features...")
 le_dict = {}
 for col in non_numeric_cols:
@@ -63,12 +63,12 @@ for col in non_numeric_cols:
     X_train[col] = le.fit_transform(X_train[col].astype(str))
     le_dict[col] = le
 
-# 6. 转换为numpy数组
+# 6. 转换为numpy数组 / Convert to numpy arrays
 X_array = X_train.values
 y_array = y_train.values
 print(f"\n6. Final feature matrix shape: {X_array.shape}")
 
-# 7. 5折交叉验证
+# 7. 5折交叉验证 / 5-fold cross-validation
 print("\n7. Running 5-Fold Cross-Validation...")
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 cv_scores = []
@@ -78,7 +78,7 @@ xgb_params = {
     'eval_metric': 'logloss',
     'max_depth': 6,
     'learning_rate': 0.1,
-    'n_estimators': 100,  # 减少树的数量以加快测试
+    'n_estimators': 100,  # 减少树的数量以加快测试 / Reduce number of trees to speed up test
     'subsample': 0.8,
     'colsample_bytree': 0.8,
     'random_state': 42,
