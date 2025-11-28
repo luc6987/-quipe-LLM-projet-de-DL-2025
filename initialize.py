@@ -2,7 +2,7 @@
 """
 初始化脚本：下载Kaggle数据并设置环境 / Initialization script: Download Kaggle data and set up environment
 1. 从.kaggle/kaggle.json创建.env环境变量文件 / Create .env environment variable file from .kaggle/kaggle.json
-2. 根据environment.txt创建conda环境（.env） / Create conda environment (.env) based on environment.txt
+2. 根据requirements.txt使用venv创建虚拟环境（.env文件夹） / Create virtual environment (.env folder) using venv based on requirements.txt
 3. 从Kaggle下载竞赛数据并解压 / Download competition data from Kaggle and extract
 4. 创建data/目录并移动必要文件 / Create data/ directory and move necessary files
 5. 删除多余文件 / Delete redundant files
@@ -147,9 +147,9 @@ def setup_kaggle_credentials():
 
 
 def create_conda_environment():
-    """根据environment.txt创建conda环境 / Create conda environment from environment.txt"""
+    """根据requirements.txt创建conda环境 / Create conda environment from requirements.txt"""
     print("=" * 60)
-    print("Creating conda environment from environment.txt...")
+    print("Creating conda environment from requirements.txt...")
     print("=" * 60)
     
     # 检查conda是否可用 / Check if conda is available
@@ -158,13 +158,15 @@ def create_conda_environment():
         print("You can install packages manually using pip.")
         return False
     
-    env_file = Path(__file__).parent / "environment.txt"
+    env_file = Path(__file__).parent / "requirements.txt"
     if not env_file.exists():
         print(f"Error: {env_file} not found!")
         return False
     
     # 环境名称 / Environment name
     env_name = ".env"
+    # 环境路径 / Environment path
+    env_path = Path(__file__).parent / env_name
     
     try:
         # 读取包列表 / Read package list
@@ -172,7 +174,7 @@ def create_conda_environment():
             packages = [line.strip() for line in f if line.strip() and not line.startswith('#')]
         
         if not packages:
-            print("No packages found in environment.txt")
+            print("No packages found in requirements.txt")
             return False
         
         print(f"Found {len(packages)} packages to install:")
@@ -180,22 +182,20 @@ def create_conda_environment():
             print(f"  - {pkg}")
         
         # 检查环境是否已存在 / Check if environment already exists
-        result = subprocess.run(["conda", "env", "list"], 
-                              capture_output=True, text=True)
-        env_exists = env_name in result.stdout
-        
-        if env_exists:
-            print(f"\nConda environment '{env_name}' already exists.")
+        if env_path.exists() and (env_path / "bin" / "python").exists():
+            print(f"\nConda environment '{env_name}' already exists at {env_path}.")
             print("Updating packages in existing environment...")
-            # 使用pip安装包（更可靠，因为conda可能没有所有包） / Use pip to install packages (more reliable, as conda may not have all packages)
-            pip_cmd = ["conda", "run", "-n", env_name, "pip", "install"] + packages
+            # 使用pip安装包 / Use pip to install packages
+            pip_cmd = ["conda", "run", "--no-plugins", "-p", str(env_path), "pip", "install"] + packages
             print(f"Running: {' '.join(pip_cmd)}")
             result = subprocess.run(pip_cmd, capture_output=True, text=True)
         else:
             # 创建新环境 / Create new environment
-            print(f"\nCreating conda environment '{env_name}'...")
+            print(f"\nCreating conda environment '{env_name}' at {env_path}...")
             # 先创建基础环境 / First create base environment
-            cmd = ["conda", "create", "-n", env_name, "python=3.9", "-y"]
+            # Use -p (prefix) instead of -n (name) to create in project directory
+            # Use --no-plugins to avoid plugin issues (like TOS errors)
+            cmd = ["conda", "create", "--no-plugins", "-p", str(env_path), "python=3.9", "-y"]
             print(f"Running: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, text=True)
             
@@ -204,16 +204,16 @@ def create_conda_environment():
                 print(result.stderr)
                 return False
             
-            # 在环境中安装包（使用pip，因为conda可能没有所有包） / Install packages in environment (use pip, as conda may not have all packages)
+            # 在环境中安装包 / Install packages in environment
             print(f"\nInstalling packages in conda environment '{env_name}'...")
-            pip_cmd = ["conda", "run", "-n", env_name, "pip", "install"] + packages
+            pip_cmd = ["conda", "run", "--no-plugins", "-p", str(env_path), "pip", "install"] + packages
             print(f"Running: {' '.join(pip_cmd)}")
             result = subprocess.run(pip_cmd, capture_output=True, text=True)
         
         if result.returncode == 0:
-            print(f"\n✓ Conda environment '{env_name}' created/updated successfully!")
+            print(f"\n✓ Conda environment created/updated successfully at {env_path}!")
             print(f"\nTo activate the environment, run:")
-            print(f"  conda activate {env_name}")
+            print(f"  conda activate {env_path}")
             return True
         else:
             print(f"\nError installing packages:")
@@ -225,45 +225,112 @@ def create_conda_environment():
         return False
 
 
-def install_packages():
-    """安装environment.txt中的包（使用pip，作为conda的备选方案） / Install packages from environment.txt (using pip, as alternative to conda)"""
+def create_venv_environment():
+    """使用venv在项目根目录创建虚拟环境 / Create virtual environment using venv in project root"""
     print("=" * 60)
-    print("Installing packages from environment.txt (using pip)...")
+    print("Creating virtual environment using venv...")
     print("=" * 60)
     
-    pip_cmd = get_pip_command()
-    env_file = Path(__file__).parent / "environment.txt"
+    project_root = Path(__file__).parent
+    env_path = project_root / ".env"
+    env_file = project_root / "requirements.txt"
     
     if not env_file.exists():
         print(f"Error: {env_file} not found!")
         return False
     
     try:
+        # 检查虚拟环境是否已存在 / Check if virtual environment already exists
+        python_exe = None
+        if env_path.exists():
+            # 检查是文件还是目录 / Check if it's a file or directory
+            if env_path.is_file():
+                # 如果是文件（可能是.env环境变量文件），重命名它 / If it's a file (possibly .env env var file), rename it
+                print(f"Found existing file at {env_path} (likely environment variables file).")
+                backup_path = project_root / ".env.backup"
+                print(f"Backing up to {backup_path}...")
+                env_path.rename(backup_path)
+            elif env_path.is_dir():
+                # 根据操作系统确定Python可执行文件路径 / Determine Python executable path based on OS
+                if platform.system() == "Windows":
+                    python_exe = env_path / "Scripts" / "python.exe"
+                else:
+                    python_exe = env_path / "bin" / "python"
+                
+                if python_exe.exists():
+                    print(f"Virtual environment already exists at {env_path}")
+                else:
+                    # 目录存在但不是有效的虚拟环境，删除并重新创建 / Directory exists but not a valid venv, remove and recreate
+                    print(f"Found existing directory at {env_path}, but it's not a valid virtual environment.")
+                    print("Removing and recreating...")
+                    shutil.rmtree(env_path)
+                    python_exe = None
+        
+        # 创建虚拟环境 / Create virtual environment
+        if python_exe is None or not python_exe.exists():
+            print(f"Creating virtual environment at {env_path}...")
+            python_cmd = sys.executable or "python3"
+            cmd = [python_cmd, "-m", "venv", str(env_path)]
+            print(f"Running: {' '.join(cmd)}")
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            
+            # 确定Python可执行文件路径 / Determine Python executable path
+            if platform.system() == "Windows":
+                python_exe = env_path / "Scripts" / "python.exe"
+            else:
+                python_exe = env_path / "bin" / "python"
+            
+            if not python_exe.exists():
+                print(f"Error: Python executable not found at {python_exe}")
+                return False
+        
         # 读取包列表 / Read package list
         with open(env_file, 'r') as f:
             packages = [line.strip() for line in f if line.strip() and not line.startswith('#')]
         
-        print(f"Found {len(packages)} packages to install:")
+        if not packages:
+            print("No packages found in requirements.txt")
+            return False
+        
+        print(f"\nFound {len(packages)} packages to install:")
         for pkg in packages:
             print(f"  - {pkg}")
         
-        # 安装包 / Install packages
-        cmd = f"{pip_cmd} install {' '.join(packages)}"
-        print(f"\nRunning: {cmd}")
-        result = subprocess.run(cmd, shell=True, check=True, 
-                              capture_output=True, text=True)
+        # 在虚拟环境中安装包 / Install packages in virtual environment
+        print(f"\nInstalling packages in virtual environment...")
+        pip_cmd = [str(python_exe), "-m", "pip", "install", "--upgrade", "pip"]
+        print(f"Upgrading pip: {' '.join(pip_cmd)}")
+        subprocess.run(pip_cmd, check=True, capture_output=True, text=True)
         
-        print("\nInstallation completed successfully!")
-        print(result.stdout)
+        pip_cmd = [str(python_exe), "-m", "pip", "install"] + packages
+        print(f"Running: {' '.join(pip_cmd)}")
+        result = subprocess.run(pip_cmd, check=True, capture_output=True, text=True)
+        
+        print("\n✓ Virtual environment created and packages installed successfully!")
+        print(f"\nVirtual environment location: {env_path}")
+        print(f"\nTo activate the environment, run:")
+        if platform.system() == "Windows":
+            print(f"  .env\\Scripts\\activate")
+        else:
+            print(f"  source .env/bin/activate")
+        print(f"\nOr use the full path:")
+        print(f"  source {env_path}/bin/activate")
+        
         return True
         
     except subprocess.CalledProcessError as e:
-        print(f"\nError installing packages:")
+        print(f"\nError creating virtual environment or installing packages:")
         print(e.stderr)
         return False
     except Exception as e:
         print(f"\nUnexpected error: {e}")
         return False
+
+
+def install_packages():
+    """安装requirements.txt中的包（使用pip，作为conda的备选方案） / Install packages from requirements.txt (using pip, as alternative to conda)"""
+    # 优先使用venv创建虚拟环境 / Prefer using venv to create virtual environment
+    return create_venv_environment()
 
 
 def download_kaggle_data():
@@ -550,7 +617,7 @@ def extract_and_organize_files():
     for item in project_root.iterdir():
         if item.is_file():
             # 保留重要的项目文件 / Preserve important project files
-            important_files = ["initialize.py", "initiate.py", "environment.txt", ".gitignore", "README.md", ".env"]
+            important_files = ["initialize.py", "initiate.py", "requirements.txt", ".gitignore", "README.md", ".env"]
             if item.name in important_files:
                 continue
             # 删除其他文件（可能是解压出来的临时文件） / Delete other files (may be temporary files from extraction)
@@ -585,13 +652,12 @@ def main():
         print("Warning: Failed to create .env file. Continuing anyway...")
     print()
     
-    # 1. 创建conda环境 / Create conda environment
-    print("Step 1: Creating conda environment from environment.txt...")
-    conda_success = create_conda_environment()
-    if not conda_success:
-        print("Warning: Conda environment creation failed. Falling back to pip installation...")
-        if not install_packages():
-            print("Warning: Package installation had issues. Continuing anyway...")
+    # 1. 创建虚拟环境 / Create virtual environment
+    print("Step 1: Creating virtual environment from requirements.txt...")
+    if not create_venv_environment():
+        print("Error: Failed to create virtual environment.")
+        print("Please check the error messages above and try again.")
+        return
     print()
     
     # 1.5. 设置Kaggle凭证 / Set up Kaggle credentials

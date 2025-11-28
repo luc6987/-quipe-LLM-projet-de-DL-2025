@@ -26,7 +26,7 @@ import pandas as pd
 import xgboost as xgb
 from typing import Dict, Any, Tuple, Optional
 from sklearn.metrics import accuracy_score
-from sklearn.model_selection import GroupKFold
+from sklearn.model_selection import GroupKFold, StratifiedKFold
 import logging
 import tempfile
 import time
@@ -41,6 +41,9 @@ try:
 except ImportError:
     OPTUNA_AVAILABLE = False
 
+# Import unified path configuration
+from src.utils.paths import get_optuna_cache_dir
+
 logger = logging.getLogger(__name__)
 
 
@@ -49,18 +52,13 @@ def _get_cache_dir() -> Path:
     Get cache directory path. / 获取缓存目录路径
     
     Returns:
-        Path to cache directory (project_root/cache/) / Path to cache directory (project_root/cache/)
+        Path to Optuna cache directory / Path to Optuna cache directory
     """
-    # Get project root (assume solution/ is at src/xgboost/solution/)
-    script_dir = Path(__file__).parent.absolute()
-    project_root = script_dir.parent.parent.parent
-    cache_dir = project_root / 'cache'
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir
+    return get_optuna_cache_dir()
 
 
 def _generate_study_id(use_kaggle_score: bool, competition: str, 
-                       cv_folds: int, use_gpu: bool) -> str:
+                       cv_folds: int, use_gpu: bool, cv_strategy: str = 'stratified') -> str:
     """
     Generate unique study ID based on configuration. / 基于配置生成唯一的study ID
     
@@ -69,11 +67,12 @@ def _generate_study_id(use_kaggle_score: bool, competition: str,
         competition: Competition name / Competition name
         cv_folds: Number of CV folds / Number of CV folds
         use_gpu: Whether using GPU / Whether using GPU
+        cv_strategy: CV strategy ('stratified' or 'group')
         
     Returns:
         Unique study ID string / Unique study ID string
     """
-    config_str = f"kaggle_{competition}_{cv_folds}folds_gpu{use_gpu}" if use_kaggle_score else f"cv_{cv_folds}folds_gpu{use_gpu}"
+    config_str = f"kaggle_{competition}_{cv_folds}folds_gpu{use_gpu}_{cv_strategy}" if use_kaggle_score else f"cv_{cv_folds}folds_gpu{use_gpu}_{cv_strategy}"
     # Create hash for uniqueness
     study_id = hashlib.md5(config_str.encode()).hexdigest()[:12]
     return f"optuna_study_{study_id}"
@@ -138,7 +137,8 @@ def optimize_hyperparameters(X_train: pd.DataFrame, y_train: pd.Series, groups: 
                              timeout: Optional[int] = None, verbose: bool = True,
                              use_kaggle_score: bool = False, X_test: Optional[pd.DataFrame] = None,
                              test_ids: Optional[pd.Series] = None,
-                             competition: str = 'influencers-or-observers-predicting-social-roles') -> Dict[str, Any]:
+                             competition: str = 'influencers-or-observers-predicting-social-roles',
+                             cv_strategy: str = 'stratified') -> Dict[str, Any]:
     """
     Optimize XGBoost hyperparameters using Optuna Bayesian Optimization.
     使用Optuna贝叶斯优化优化XGBoost超参数。
@@ -146,12 +146,15 @@ def optimize_hyperparameters(X_train: pd.DataFrame, y_train: pd.Series, groups: 
     Can use either CV score or Kaggle submission score as optimization target.
     可以使用CV分数或Kaggle提交分数作为优化目标。
     
-    Search Space (exact as specified in blueprint):
+    Search Space (regularized to reduce overfitting):
     - learning_rate: log-uniform [1e-3, 0.1]
-    - max_depth: int [3, 10]
-    - subsample: float [0.5, 1.0]
-    - colsample_bytree: float [0.5, 1.0]
-    - min_child_weight: int [1, 20]
+    - max_depth: int [3, 7]               (was [3, 10])
+    - subsample: float [0.6, 1.0]         (was [0.5, 1.0])
+    - colsample_bytree: float [0.6, 1.0]  (was [0.5, 1.0])
+    - min_child_weight: int [3, 20]       (was [1, 20])
+    - gamma: float [0.0, 5.0]
+    - reg_alpha: float [0.0, 2.0]
+    - reg_lambda: float [0.0, 5.0]
     
     Baseline Parameters:
     - scale_pos_weight: 1.127 (53% negative / 47% positive)
@@ -172,6 +175,7 @@ def optimize_hyperparameters(X_train: pd.DataFrame, y_train: pd.Series, groups: 
         X_test: Test features DataFrame (required if use_kaggle_score=True)
         test_ids: Test IDs Series (required if use_kaggle_score=True)
         competition: Kaggle competition name (required if use_kaggle_score=True)
+        cv_strategy: 'stratified' or 'group' (default: 'stratified')
         
     Returns:
         Dictionary containing:
@@ -237,8 +241,13 @@ def optimize_hyperparameters(X_train: pd.DataFrame, y_train: pd.Series, groups: 
     logger.info(f"  Class distribution: {negative_count} negative, {positive_count} positive")
     logger.info(f"  scale_pos_weight: {scale_pos_weight:.3f}")
     
-    # Initialize GroupKFold
-    gkf = GroupKFold(n_splits=cv_folds)
+    # Initialize CV
+    if cv_strategy == 'stratified':
+        cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
+        logger.info(f"  Using StratifiedKFold (CV folds: {cv_folds})")
+    else:
+        cv = GroupKFold(n_splits=cv_folds)
+        logger.info(f"  Using GroupKFold (CV folds: {cv_folds})")
     
     # Prepare GPU parameters
     if use_gpu and gpu_params:
@@ -250,13 +259,14 @@ def optimize_hyperparameters(X_train: pd.DataFrame, y_train: pd.Series, groups: 
     
     # ========== Setup Study Persistence ==========
     cache_dir = _get_cache_dir()
-    study_id = _generate_study_id(use_kaggle_score, competition, cv_folds, use_gpu)
+    study_id = _generate_study_id(use_kaggle_score, competition, cv_folds, use_gpu, cv_strategy)
     study_db_path = cache_dir / f"{study_id}.db"
     study_name = f"xgboost_optimization_{study_id}"
     
     # Prepare configuration to save
     optimization_config = {
         'study_id': study_id,
+        'cv_strategy': cv_strategy,
         'use_kaggle_score': use_kaggle_score,
         'competition': competition,
         'cv_folds': cv_folds,
@@ -397,13 +407,16 @@ def optimize_hyperparameters(X_train: pd.DataFrame, y_train: pd.Series, groups: 
             
             # Hyperparameters to optimize
             'learning_rate': trial.suggest_float('learning_rate', 1e-3, 0.1, log=True),
-            'max_depth': trial.suggest_int('max_depth', 3, 10),
-            'subsample': trial.suggest_float('subsample', 0.5, 1.0),
-            'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 1.0),
-            'min_child_weight': trial.suggest_int('min_child_weight', 1, 20),
+            'max_depth': trial.suggest_int('max_depth', 3, 7),
+            'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+            'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
+            'min_child_weight': trial.suggest_int('min_child_weight', 3, 20),
+            'gamma': trial.suggest_float('gamma', 0.0, 5.0),
+            'reg_alpha': trial.suggest_float('reg_alpha', 0.0, 2.0),
+            'reg_lambda': trial.suggest_float('reg_lambda', 0.0, 5.0),
             
             # Fixed parameters
-            'n_estimators': 2000,  # Large value, use early stopping
+            'n_estimators': 800,  # Reduced cap, use early stopping to pick best_iteration
             'scale_pos_weight': scale_pos_weight,
             'random_state': 42,
             'n_jobs': -1,
@@ -419,7 +432,14 @@ def optimize_hyperparameters(X_train: pd.DataFrame, y_train: pd.Series, groups: 
             
             # Determine n_estimators from CV (quick CV to get best_iteration)
             cv_best_iterations = []
-            for train_idx, val_idx in gkf.split(X_array, y_array, groups=groups_array):
+            
+            # Setup splitter generator based on strategy
+            if cv_strategy == 'stratified':
+                splitter = cv.split(X_array, y_array)
+            else:
+                splitter = cv.split(X_array, y_array, groups=groups_array)
+                
+            for train_idx, val_idx in splitter:
                 X_fold_train = X_array[train_idx]
                 X_fold_val = X_array[val_idx]
                 y_fold_train = y_array[train_idx]
@@ -584,7 +604,14 @@ def optimize_hyperparameters(X_train: pd.DataFrame, y_train: pd.Series, groups: 
                     
                     # Fallback to CV score if Kaggle score not available
                     cv_scores = []
-                    for train_idx, val_idx in gkf.split(X_array, y_array, groups=groups_array):
+                    
+                    # Setup splitter generator based on strategy
+                    if cv_strategy == 'stratified':
+                        splitter = cv.split(X_array, y_array)
+                    else:
+                        splitter = cv.split(X_array, y_array, groups=groups_array)
+                        
+                    for train_idx, val_idx in splitter:
                         X_fold_train = X_array[train_idx]
                         X_fold_val = X_array[val_idx]
                         y_fold_train = y_array[train_idx]
@@ -630,11 +657,17 @@ def optimize_hyperparameters(X_train: pd.DataFrame, y_train: pd.Series, groups: 
                 # Continue to CV score mode below
         
         # ========== Use CV Score Mode (default or fallback) ==========
-        # GroupKFold cross-validation
+        # Cross-validation
         cv_scores = []
         best_iterations = []
         
-        for train_idx, val_idx in gkf.split(X_array, y_array, groups=groups_array):
+        # Setup splitter generator based on strategy
+        if cv_strategy == 'stratified':
+            splitter = cv.split(X_array, y_array)
+        else:
+            splitter = cv.split(X_array, y_array, groups=groups_array)
+        
+        for train_idx, val_idx in splitter:
             X_fold_train = X_array[train_idx]
             X_fold_val = X_array[val_idx]
             y_fold_train = y_array[train_idx]
@@ -707,7 +740,7 @@ def optimize_hyperparameters(X_train: pd.DataFrame, y_train: pd.Series, groups: 
     best_params.update({
         'objective': 'binary:logistic',
         'eval_metric': 'logloss',
-        'n_estimators': 2000,  # Will be adjusted based on best_iterations
+        'n_estimators': 800,  # Will be adjusted based on best_iterations
         'scale_pos_weight': scale_pos_weight,
         'random_state': 42,
         'n_jobs': -1,
@@ -723,7 +756,13 @@ def optimize_hyperparameters(X_train: pd.DataFrame, y_train: pd.Series, groups: 
         logger.info("\nRunning final CV to determine best iterations...")
     final_cv_scores, final_best_iterations = [], []
     
-    for train_idx, val_idx in gkf.split(X_array, y_array, groups=groups_array):
+    # Setup splitter generator based on strategy
+    if cv_strategy == 'stratified':
+        splitter = cv.split(X_array, y_array)
+    else:
+        splitter = cv.split(X_array, y_array, groups=groups_array)
+    
+    for train_idx, val_idx in splitter:
         X_fold_train = X_array[train_idx]
         X_fold_val = X_array[val_idx]
         y_fold_train = y_array[train_idx]
@@ -746,7 +785,7 @@ def optimize_hyperparameters(X_train: pd.DataFrame, y_train: pd.Series, groups: 
         if hasattr(model, 'best_iteration') and model.best_iteration is not None:
             final_best_iterations.append(model.best_iteration)
         else:
-            final_best_iterations.append(2000)
+            final_best_iterations.append(800)
     
     mean_best_iterations = np.mean(final_best_iterations)
     

@@ -82,7 +82,7 @@ else:
 
 def analyze_with_shap(model: Any, X_val: pd.DataFrame, feature_names: Optional[List[str]] = None,
                       max_samples: int = 1000, max_display: int = 20,
-                      output_dir: str = 'output/shap', plot: bool = True) -> Dict[str, Any]:
+                      output_dir: Optional[str] = None, plot: bool = True) -> Dict[str, Any]:
     """
     Perform SHAP analysis for feature interpretability.
     执行SHAP分析以进行特征可解释性分析。
@@ -112,6 +112,11 @@ def analyze_with_shap(model: Any, X_val: pd.DataFrame, feature_names: Optional[L
             error_msg += "SHAP may be installed in /Data/yuguang.yao/pytorch_packages but could not be imported. "
         error_msg += "Please ensure SHAP is properly installed: pip install shap"
         raise ImportError(error_msg)
+    
+    # Use unified path configuration if output_dir is not specified
+    if output_dir is None:
+        from src.utils.paths import get_shap_dir
+        output_dir = str(get_shap_dir())
     
     logger.info("="*60)
     logger.info("SHAP Analysis: Feature Interpretability")

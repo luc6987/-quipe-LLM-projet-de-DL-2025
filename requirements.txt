@@ -1,0 +1,42 @@
+# Core Data Science & Machine Learning
+numpy>=1.23.0
+pandas>=1.5.0
+scikit-learn>=1.2.0
+matplotlib>=3.6.0
+seaborn>=0.12.0
+tqdm
+
+# Gradient Boosting
+xgboost>=2.0.0
+lightgbm
+catboost
+
+# Deep Learning (PyTorch Ecosystem)
+torch>=2.0.0
+torchvision
+torchaudio
+
+# Transformers & NLP (Hugging Face)
+transformers
+peft
+datasets
+accelerate
+tokenizers
+emoji
+
+# MLOps & Experiment Tracking
+optuna>=3.0.0
+wandb
+mlflow
+
+# Interpretability
+shap>=0.41.0
+
+# Kaggle Utils
+kaggle>=1.5.0
+
+# Other Utilities
+python-dotenv
+ipykernel
+jupyter
+

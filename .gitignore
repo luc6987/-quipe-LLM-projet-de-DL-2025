@@ -5,6 +5,8 @@ output/
 .mypy_cache/
 .kaggle/
 .env
+.cache/
+.cursor/
 
 # macOS
 .DS_Store

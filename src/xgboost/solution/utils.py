@@ -10,6 +10,7 @@ import json
 import os
 import sys
 import logging
+from pathlib import Path
 from typing import Tuple, Dict, Any, Optional
 import pandas as pd
 import numpy as np
@@ -273,13 +274,19 @@ def save_submission(predictions: np.ndarray, ids: pd.Series, output_path: str) -
     Args:
         predictions: Array of predictions (0 or 1)
         ids: Series of challenge IDs
-        output_path: Path to save the submission file
+        output_path: Path to save the submission file (will be placed in output/submissions/ if relative)
         
     Raises:
         ValueError: If predictions and ids lengths don't match
     """
     if len(predictions) != len(ids):
         raise ValueError(f"Predictions length ({len(predictions)}) doesn't match IDs length ({len(ids)})")
+    
+    # If output_path is relative or just a filename, place it in submissions directory
+    output_path_obj = Path(output_path)
+    if not output_path_obj.is_absolute():
+        from src.utils.paths import get_submissions_dir
+        output_path = str(get_submissions_dir() / output_path_obj.name)
     
     ensure_dir(output_path)
     

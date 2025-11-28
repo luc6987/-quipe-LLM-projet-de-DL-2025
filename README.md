@@ -8,7 +8,7 @@ This project contains code and experiments for the Kaggle competition "Influence
 Kaggle2025/
 ├── README.md                    # Project documentation (this file)
 ├── initiate.py                  # Initialization script (download data, install dependencies)
-├── environment.txt              # Python dependency list
+├── requirements.txt             # Python dependency list
 ├── .gitignore                   # Git ignore file configuration
 │
 ├── data/                        # Data directory (created automatically by initiate.py)
@@ -83,7 +83,7 @@ If you can see the competition list, the configuration is successful!
 
 The `initiate.py` script will automatically complete the following tasks:
 
-1. ✅ **Install Dependencies**: Install all required Python packages from `environment.txt`
+1. ✅ **Install Dependencies**: Install all required Python packages from `requirements.txt`
 2. ✅ **Download Competition Data**: Download competition data files from Kaggle
 3. ✅ **Extract Files**: Automatically extract downloaded zip files
 4. ✅ **Organize File Structure**: Move `train.jsonl` and `kaggle_test.jsonl` to `data/` directory
@@ -111,7 +111,7 @@ Kaggle Competition Setup Script
 
 Step 1: Installing dependencies...
 ============================================================
-Installing packages from environment.txt...
+Installing packages from requirements.txt...
 ============================================================
 Found 5 packages to install:
   - numpy
@@ -168,7 +168,7 @@ python xgboost_baseline.py
 
 ## 📦 Dependencies
 
-The Python packages required for this project are listed in `environment.txt`:
+The Python packages required for this project are listed in `requirements.txt`:
 
 - `numpy` - Numerical computing
 - `pandas` - Data processing
@@ -183,7 +183,7 @@ All dependencies will be automatically installed when running `initiate.py`.
 If you don't want to use `initiate.py`, you can also install manually:
 
 ```bash
-pip install -r environment.txt
+pip install -r requirements.txt
 ```
 
 Or:
