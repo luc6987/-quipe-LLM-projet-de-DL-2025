@@ -143,6 +143,7 @@ optimization:
 # ============================================================================
 model:
   active: "xgboost"  # 可选: "xgboost", "lightgbm" 或 "catboost" / Options: "xgboost", "lightgbm" or "catboost"
+  # 说明：通过下方 stacking/blending 配置同时跑三模型并做折外平均 / Use stacking/blending below to run 3 models with OOF averaging
 
 # ============================================================================
 # XGBoost配置 / XGBoost Configuration
@@ -159,15 +160,16 @@ xgboost:
   params:
     objective: "binary:logistic"  # 目标函数：二分类逻辑回归 / Objective function: binary logistic regression
     eval_metric: ["logloss", "error", "auc"]  # 评估指标列表 / Evaluation metrics list
-    learning_rate: 0.03  # 学习率（步长收缩）/ Learning rate (step size shrinkage)
-    max_depth: 6  # 树的最大深度 / Maximum tree depth
-    subsample: 0.8  # 样本采样比例（防止过拟合）/ Subsample ratio (prevent overfitting)
-    colsample_bytree: 0.75  # 特征采样比例（每棵树）/ Column sampling ratio (per tree)
-    min_child_weight: 5  # 叶子节点最小权重和（防止过拟合）/ Minimum sum of instance weight in a child
-    n_estimators: 400  # 树的数量（epoch数）/ Number of trees (number of epochs)
-    gamma: 0.2  # 最小损失减少量（分裂阈值）/ Minimum loss reduction required for split
-    reg_alpha: 0.15  # L1正则化项（Lasso）/ L1 regularization term (Lasso)
-    reg_lambda: 1.5  # L2正则化项（Ridge）/ L2 regularization term (Ridge)
+    learning_rate: 0.05  # 中等规模：更小步长配合更多树 / Moderate scale: smaller step with more trees
+    max_depth: 7  # 允许适度交互 / Allow moderate interactions
+    subsample: 0.75  # 采样略强，增加稳健性 / Slightly stronger sampling for robustness
+    colsample_bytree: 0.65  # 降低特征相关性 / Reduce feature correlation
+    min_child_weight: 6  # 提升叶子最小权重抑制过拟合 / Heavier child weight to regularize
+    n_estimators: 2200  # 配合小步长的树数 / Trees for small LR
+    gamma: 0.25  # 分裂阈值稍高 / Slightly higher split gain threshold
+    reg_alpha: 0.1  # L1正则化项 / L1 regularization
+    reg_lambda: 1.2  # L2正则化项 / L2 regularization
+    tree_method: "hist"  # 与 GPU 配合或 CPU 直方图 / Histogram-based growing
     random_state: 42  # 随机种子（确保可复现性）/ Random seed (for reproducibility)
     n_jobs: -1  # 并行线程数（-1表示使用所有CPU核心）/ Number of parallel threads (-1 means all CPU cores)
     scale_pos_weight_ratio: 1.127  # 正样本权重比例（用于处理类别不平衡，将乘以实际计算值）/ Positive class weight ratio (for class imbalance, will be multiplied by actual calculation)
@@ -199,15 +201,17 @@ lightgbm:
     boosting_type: "gbdt"
     objective: "binary"
     metric: ["binary_logloss", "auc"]
-    learning_rate: 0.05
-    num_leaves: 64
-    max_depth: -1
+    learning_rate: 0.04  # 中等规模：小步长多树 / Moderate scale: small LR, more trees
+    num_leaves: 255  # 捕获更高阶交互 / Capture richer interactions
+    max_depth: 10
     subsample: 0.8
-    colsample_bytree: 0.8
+    colsample_bytree: 0.7
     reg_alpha: 0.1
-    reg_lambda: 1.0
-    min_child_samples: 20
-    n_estimators: 400
+    reg_lambda: 1.2
+    min_child_samples: 120  # 强化正则防过拟合 / Stronger regularization
+    n_estimators: 2400
+    bagging_freq: 1
+    feature_fraction: 0.7
     random_state: 42
     n_jobs: -1
 
@@ -232,15 +236,16 @@ catboost:
   # ========================================================================
   params:
     loss_function: "Logloss"  # 损失函数：二分类对数损失 / Loss function: binary logloss
-    eval_metric: "Logloss"  # 评估指标 / Evaluation metric
-    learning_rate: 0.05  # 学习率（步长收缩）/ Learning rate (step size shrinkage)
-    depth: 6  # 树的最大深度 / Maximum tree depth
-    iterations: 400  # 迭代次数（树的数量）/ Number of iterations (number of trees)
+    eval_metric: "AUC"  # 使用 AUC 监控 / Use AUC for monitoring
+    learning_rate: 0.04  # 中等规模：小步长多迭代 / Moderate scale: small LR, more iters
+    depth: 8  # 对称树更深一些 / Slightly deeper symmetric trees
+    iterations: 2500  # 小步长配合更多树 / More trees for small LR
     bootstrap_type: "Bernoulli"  # Bootstrap类型：必须为"Bernoulli"才能使用subsample / Bootstrap type: must be "Bernoulli" to use subsample
-    subsample: 0.8  # 样本采样比例（防止过拟合）/ Subsample ratio (prevent overfitting)
-    rsm: 0.8  # 特征采样比例（随机子空间方法）/ Feature sampling ratio (random subspace method)
-    l2_leaf_reg: 1.0  # L2正则化项（Ridge）/ L2 regularization term (Ridge)
-    min_data_in_leaf: 3  # 叶子节点最小样本数（防止过拟合）/ Minimum samples in leaf (prevent overfitting)
+    subsample: 0.7  # 更强采样抑制过拟合 / Stronger sampling for regularization
+    rsm: 0.7  # 特征子采样 / Feature subsampling
+    l2_leaf_reg: 8.0  # L2正则化项（Ridge）/ L2 regularization term (Ridge)
+    min_data_in_leaf: 20  # 叶子节点最小样本数 / Minimum samples in leaf
+    random_strength: 0.8  # 轻度随机化，增加多样性 / Mild randomness for diversity
     random_seed: 42  # 随机种子（确保可复现性）/ Random seed (for reproducibility)
     thread_count: -1  # 并行线程数（-1表示使用所有CPU核心）/ Number of parallel threads (-1 means all CPU cores)
     verbose: false  # 是否输出训练过程 / Whether to output training progress
@@ -266,6 +271,6 @@ neural:
 # 堆叠集成配置 / Stacking Ensemble Configuration
 # ============================================================================
 stacking:
-  enabled: false # 是否启用stacking模式 / Whether to enable stacking mode
+  enabled: true # 是否启用stacking模式 / Whether to enable stacking mode
   n_folds: 5  # 交叉验证折数 / Number of cross-validation folds
   text_components: 32  # 文本嵌入PCA降维后的维度 / Text embedding dimension after PCA reduction
