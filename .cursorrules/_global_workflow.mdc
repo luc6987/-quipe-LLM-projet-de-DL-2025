@@ -1,0 +1,56 @@
+---
+description: Global workflow standards. Enforce Chain of Thought and Plan-Act pattern.
+globs: *
+alwaysApply: true
+---
+
+# Global Workflow Protocol
+
+**Priority**: CRITICAL  
+**Intention**: Prevent premature code generation and ensure architectural alignment.
+
+## Language Protocol
+
+### Chat Interaction
+
+**Primary Language**: Chinese (Simplified).  
+Use Chinese for all conversational output, explanations, reasoning, and planning phases unless explicitly asked otherwise.
+
+### Code Artifacts
+
+**Comment Language**: English.  
+STRICTLY use English for all inline comments, docstrings, variable naming explanations, and commit messages.
+
+**Rationale**: Ensures code portability and alignment with international open-source standards.
+
+## Workflow Protocol
+
+### PLANNING Phase
+
+**Trigger**: Complex logical changes, Refactoring, New Feature Engineering
+
+**Instructions**:
+1. **STOP**. Do not generate code immediately.
+2. Analyze the user request.
+3. Check `@memory/experiment_log.md` for past failures/successes.
+4. Propose a step-by-step plan.
+
+### ACTING Phase
+
+**Instructions** (Only after user confirmation):
+1. Write code in small, verifiable chunks.
+2. No "yapping" (conversational filler). Start directly with code or answer.
+
+## Documentation Rule
+
+**Do NOT generate summary or documentation files** unless explicitly requested.
+
+Unless the user explicitly asks for summary files, documentation files (e.g., *.md summary files), or organizational reports, do not create them. Focus on code changes and implementation only.
+
+**Examples of files NOT to create**:
+- FILE_ORGANIZATION_SUMMARY.md
+- CHANGES.md
+- TODO.md
+- etc.
+
+**Only create documentation when user explicitly requests it.**

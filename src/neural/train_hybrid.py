@@ -28,6 +28,8 @@ from src.utils import data_processing as dp
 from src.neural.hybrid_model import HybridBERTweetTabular
 from src.utils.paths import DATA_DIR, get_models_output_dir
 
+from src.utils.config import load_config
+
 # Configure Logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -141,11 +143,13 @@ def eval_model(model, data_loader, loss_fn, device, n_examples):
 
 def main():
     # Config
-    MAX_LEN = 128
-    BATCH_SIZE = 16
-    EPOCHS = 5
-    LR = 2e-5
-    MODEL_NAME = 'microsoft/deberta-v3-base'
+    config = load_config()['neural']
+    
+    MAX_LEN = config.get('max_len', 128)
+    BATCH_SIZE = config.get('batch_size', 16)
+    EPOCHS = config.get('epochs', 5)
+    LR = float(config.get('learning_rate', 2e-5))
+    MODEL_NAME = config.get('model_name', 'microsoft/deberta-v3-base')
     
     # Data
     train_df = dp.load_data(str(DATA_DIR / 'train.jsonl'), clean_text=True)
@@ -205,26 +209,19 @@ def main():
     best_accuracy = 0
     
     for epoch in range(EPOCHS):
-        print(f"\nEpoch {epoch + 1}/{EPOCHS}")
-        print("-" * 10)
-        
         train_acc, train_loss = train_epoch(
             model, train_loader, loss_fn, optimizer, scheduler, device, len(train_df_split)
         )
-        print(f"Train loss {train_loss} accuracy {train_acc}")
         
         val_acc, val_loss = eval_model(
             model, val_loader, loss_fn, device, len(val_df_split)
         )
-        print(f"Val   loss {val_loss} accuracy {val_acc}")
         
         if val_acc > best_accuracy:
             model_path = str(get_models_output_dir() / 'hybrid_model' / 'best_hybrid_model.bin')
             os.makedirs(os.path.dirname(model_path), exist_ok=True)
             torch.save(model.state_dict(), model_path)
             best_accuracy = val_acc
-            
-    print("Training Complete.")
 
 if __name__ == "__main__":
     main()

@@ -25,6 +25,9 @@ import logging
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+import pickle
+import json
+from datetime import datetime
 from typing import Dict, Any, Optional
 
 # 添加 /Data 目录中的包路径（如果存在）
@@ -36,6 +39,11 @@ if os.path.exists('/Data/yuguang.yao/pytorch_packages'):
 script_dir = os.path.dirname(os.path.abspath(__file__))
 if script_dir not in sys.path:
     sys.path.insert(0, script_dir)
+
+# Add parent directory (src/xgboost) to path for utils and feature_engineering
+xgboost_dir = os.path.dirname(script_dir)
+if xgboost_dir not in sys.path:
+    sys.path.insert(0, xgboost_dir)
 
 # Add project root to path to allow imports from src (for baseline-style pipeline)
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))
@@ -50,12 +58,17 @@ from utils import (
     save_submission,
     ensure_dir
 )
-from feature_engineering import engineer_features
 from validation import group_kfold_cv
 from hyperparameter_optimization import optimize_hyperparameters
 
+# Centralized preprocessing/feature engineering
+from src.preprocessing.xgboost_feature_engineering import engineer_features
+
 # Import shared baseline-style data processing utilities
-from src.utils import data_processing as dp
+from src.preprocessing import data_processing as dp
+from src.utils.config import load_config
+from src.utils.paths import get_output_dir
+from src.vis_stat.training_monitor import generate_training_report
 # SHAP analysis imported lazily (only when needed) to handle import errors gracefully
 
 # Setup logging
@@ -145,6 +158,15 @@ def main():
     
     args = parser.parse_args()
     
+    # Load configuration
+    try:
+        config = load_config()
+        semantic_config = config.get('semantic', {})
+    except Exception as e:
+        logger.warning(f"Could not load config, using defaults: {e}")
+        config = {}
+        semantic_config = {}
+    
     logger.info("="*80)
     logger.info("Complete XGBoost Pipeline: Influencer/Observer Classification")
     logger.info("="*80)
@@ -211,8 +233,129 @@ def main():
     # 在特征工程删除用户字段之前先提取用户ID，用于 GroupKFold，避免退化为按样本索引分组
     train_groups = extract_user_id(train_df)
     
-    # ========== Step 3: Feature Engineering ==========
-    logger.info("\n[Step 3] Feature Engineering")
+    # ========== Step 3: CamemBERT Fine-tuning (if enabled) ==========
+    # Read embedding parameters from config (needed for fine-tuning check)
+    embedding_model = semantic_config.get('embedding_model', 'deberta')  # 'camembert' or 'deberta'
+    use_finetuned_probabilities = semantic_config.get('use_finetuned_probabilities', False)
+    finetuned_model_path = semantic_config.get('finetune_model_path', 'output/models/camembert_finetuned')
+    
+    # CamemBERT specific parameters (needed for fine-tuning)
+    camembert_model_name = semantic_config.get('camembert_model_name', 'camembert-base')
+    camembert_max_length = semantic_config.get('camembert_max_length', 256)
+    camembert_batch_size = semantic_config.get('camembert_batch_size', 32)
+    extract_style_features = semantic_config.get('extract_style_features', True)
+    classify_urls = semantic_config.get('classify_urls', True)
+    
+    if use_finetuned_probabilities and embedding_model.lower() == 'camembert':
+        logger.info("\n[Step 3] CamemBERT Fine-tuning Check")
+        logger.info("-" * 60)
+        
+        try:
+            from pathlib import Path
+            from src.camembert.finetuning import train_camembert_classifier
+            from src.camembert.finetune_camembert import load_finetuning_params, save_finetuning_params
+        except (ImportError, OSError) as e:
+            logger.error(f"  ✗ Failed to import CamemBERT modules: {e}")
+            logger.warning(f"  Falling back to non-fine-tuned embeddings...")
+            use_finetuned_probabilities = False
+        else:
+            finetune_model_path = Path(finetuned_model_path)
+            finetune_params_file = finetune_model_path / 'finetuning_params.json'
+            
+            # Try to load existing fine-tuning parameters
+            finetuning_params = load_finetuning_params(finetune_params_file)
+            
+            # Check if fine-tuned model exists
+            model_exists = (
+                finetune_model_path.exists() and 
+                (finetune_model_path / 'config.json').exists() and
+                ((finetune_model_path / 'pytorch_model.bin').exists() or 
+                 (finetune_model_path / 'model.safetensors').exists())
+            )
+            
+            if model_exists and finetuning_params:
+                logger.info(f"  ✓ Fine-tuned model found at {finetune_model_path}")
+                logger.info(f"  ✓ Fine-tuning parameters loaded from {finetune_params_file}")
+                logger.info(f"    - Model: {finetuning_params.get('model_name', 'N/A')}")
+                logger.info(f"    - Epochs: {finetuning_params.get('num_epochs', 'N/A')}")
+                logger.info(f"    - Learning rate: {finetuning_params.get('learning_rate', 'N/A')}")
+                logger.info(f"    - Batch size: {finetuning_params.get('batch_size', 'N/A')}")
+                logger.info(f"    - Fine-tuned at: {finetuning_params.get('finetuned_at', 'N/A')}")
+                logger.info(f"  Using existing fine-tuned model (skip fine-tuning)")
+            else:
+                # Need to fine-tune
+                logger.info(f"  Fine-tuned model or parameters not found, starting fine-tuning...")
+                
+                # Get parameters from config or use defaults
+                finetune_epochs = semantic_config.get('finetune_epochs', 3)
+                finetune_learning_rate = semantic_config.get('finetune_learning_rate', 2e-5)
+                finetune_batch_size = semantic_config.get('finetune_batch_size', 16)
+                finetune_validation_split = semantic_config.get('finetune_validation_split', 0.2)
+                finetune_early_stopping_patience = semantic_config.get('finetune_early_stopping_patience', 2)
+                finetune_visualization_dir = semantic_config.get('finetune_visualization_dir', 'output/camembert/finetuning')
+                finetune_save_plots = semantic_config.get('finetune_save_plots', True)
+                
+                logger.info(f"  Fine-tuning configuration:")
+                logger.info(f"    - Model: {camembert_model_name}")
+                logger.info(f"    - Epochs: {finetune_epochs}")
+                logger.info(f"    - Learning rate: {finetune_learning_rate}")
+                logger.info(f"    - Batch size: {finetune_batch_size}")
+                logger.info(f"    - Max length: {camembert_max_length}")
+                logger.info(f"    - Validation split: {finetune_validation_split}")
+                logger.info(f"    - Early stopping patience: {finetune_early_stopping_patience}")
+                
+                try:
+                    model, tokenizer, training_history = train_camembert_classifier(
+                        train_df,
+                        model_name=camembert_model_name,
+                        output_dir=finetune_model_path,
+                        num_epochs=finetune_epochs,
+                        learning_rate=finetune_learning_rate,
+                        batch_size=finetune_batch_size,
+                        max_length=camembert_max_length,
+                        validation_split=finetune_validation_split,
+                        early_stopping_patience=finetune_early_stopping_patience,
+                        save_plots=finetune_save_plots,
+                        visualization_dir=Path(finetune_visualization_dir)
+                    )
+                    logger.info(f"  ✓ Fine-tuning complete! Model saved to {finetune_model_path}")
+                    
+                    # Save fine-tuning parameters
+                    finetuning_params = {
+                        'model_name': camembert_model_name,
+                        'output_dir': str(finetune_model_path),
+                        'num_epochs': finetune_epochs,
+                        'learning_rate': finetune_learning_rate,
+                        'batch_size': finetune_batch_size,
+                        'max_length': camembert_max_length,
+                        'validation_split': finetune_validation_split,
+                        'early_stopping_patience': finetune_early_stopping_patience,
+                        'train_file': str(args.train_file),
+                        'num_train_samples': len(train_df),
+                        'final_metrics': training_history.get('overfitting_info', {}),
+                        'model_exists': True
+                    }
+                    
+                    save_finetuning_params(finetuning_params, finetune_params_file)
+                    logger.info(f"  ✓ Fine-tuning parameters saved to {finetune_params_file}")
+                    
+                    # Log overfitting analysis
+                    if training_history.get('overfitting_info', {}).get('overfitting_detected'):
+                        logger.warning(f"  ⚠ Overfitting detected during fine-tuning")
+                    elif training_history.get('overfitting_info', {}).get('underfitting_detected'):
+                        logger.warning(f"  ⚠ Underfitting detected during fine-tuning")
+                    else:
+                        logger.info(f"  ✓ No overfitting/underfitting detected")
+                    
+                except Exception as e:
+                    logger.error(f"  ✗ Fine-tuning failed: {e}")
+                    import traceback
+                    logger.error(traceback.format_exc())
+                    logger.warning(f"  Falling back to non-fine-tuned embeddings...")
+                    use_finetuned_probabilities = False
+    
+    # ========== Step 4: Feature Engineering ==========
+    logger.info("\n[Step 4] Feature Engineering")
     logger.info("-" * 60)
     
     if args.kaggle_max:
@@ -249,13 +392,35 @@ def main():
         logger.info("  Extracting metadata features (NO text content)")
         
         # Train set: fit transformers (with y_train for target encoding)
+        # Read embedding parameters from config (embedding_model and CamemBERT params already defined above)
+        use_text_embedding = semantic_config.get('use_semantic_features', True)
+        text_embedding_n_components = semantic_config.get('pca_components', 32)
+        
+        logger.info(f"  Using embedding model: {embedding_model}")
+        if embedding_model.lower() == 'camembert':
+            logger.info(f"    - Model: {camembert_model_name}")
+            logger.info(f"    - Max length: {camembert_max_length}")
+            logger.info(f"    - Batch size: {camembert_batch_size}")
+            logger.info(f"    - Style features: {extract_style_features}")
+            logger.info(f"    - URL classification: {classify_urls}")
+            logger.info(f"    - Use fine-tuned probabilities: {use_finetuned_probabilities}")
+            if use_finetuned_probabilities:
+                logger.info(f"    - Fine-tuned model path: {finetuned_model_path}")
+        
         X_train, transformers = engineer_features(
             train_df,
             is_train=True,
             kaggle_max=False,
             y_train=y_train,  # Required for target encoding
-            use_text_embedding=True,  # Enable BERTweet embeddings
-            text_embedding_n_components=16,  # PCA to 16 dimensions
+            use_text_embedding=use_text_embedding,
+            text_embedding_n_components=text_embedding_n_components,
+            embedding_model=embedding_model,
+            camembert_max_length=camembert_max_length,
+            camembert_batch_size=camembert_batch_size,
+            extract_style_features=extract_style_features,
+            classify_urls=classify_urls,
+            use_finetuned_probabilities=use_finetuned_probabilities,
+            finetuned_model_path=finetuned_model_path if use_finetuned_probabilities else None,
         )
         logger.info(f"  Training features shape: {X_train.shape}")
         
@@ -267,8 +432,15 @@ def main():
             transformers=transformers,
             kaggle_max=False,
             y_train=None,  # Not needed for test set
-            use_text_embedding=True,  # Enable BERTweet embeddings
-            text_embedding_n_components=16,  # PCA to 16 dimensions
+            use_text_embedding=use_text_embedding,
+            text_embedding_n_components=text_embedding_n_components,
+            embedding_model=embedding_model,
+            camembert_max_length=camembert_max_length,
+            camembert_batch_size=camembert_batch_size,
+            extract_style_features=extract_style_features,
+            classify_urls=classify_urls,
+            use_finetuned_probabilities=use_finetuned_probabilities,
+            finetuned_model_path=finetuned_model_path if use_finetuned_probabilities else None,
         )
         logger.info(f"  Test features shape: {X_test.shape}")
         
@@ -303,20 +475,20 @@ def main():
         # Ensure column order matches
         X_test = X_test[X_train.columns]
     
-    # ========== Step 4: Extract User IDs ==========
-    logger.info("\n[Step 4] Extract User IDs for GroupKFold")
+    # ========== Step 5: Extract User IDs ==========
+    logger.info("\n[Step 5] Extract User IDs for GroupKFold")
     logger.info("-" * 60)
     
     # train_groups 已在特征工程之前从原始 train_df 中提取，确保真正按用户分组
     logger.info(f"  Training: {train_groups.nunique()} unique users")
     
-    # ========== Step 5: Hyperparameter Optimization ==========
+    # ========== Step 6: Hyperparameter Optimization ==========
     best_params = None
     mean_best_iterations = None
     optimization_result = None
     
     if args.optimize:
-        logger.info("\n[Step 5] Hyperparameter Optimization (Optuna)")
+        logger.info("\n[Step 6] Hyperparameter Optimization (Optuna)")
         logger.info("-" * 60)
         
         optimization_result = optimize_hyperparameters(
@@ -343,7 +515,7 @@ def main():
         logger.info(f"\n  Best {score_type}: {optimization_result['best_score']:.4f}")
         logger.info(f"  Mean Best Iterations: {mean_best_iterations:.1f}")
     else:
-        logger.info("\n[Step 5] Skipping Hyperparameter Optimization")
+        logger.info("\n[Step 6] Skipping Hyperparameter Optimization")
         logger.info("  (Use --optimize to enable)")
         
         # Use default parameters
@@ -388,20 +560,53 @@ def main():
             best_params.update(gpu_params)
             mean_best_iterations = 200
     
-    # ========== Step 6: Final Training ==========
-    logger.info("\n[Step 6] Final Training on Full Dataset")
+    # ========== Step 7: Cross-Validation ==========
+    logger.info("\n[Step 7] Cross-Validation")
     logger.info("-" * 60)
     
-    # Set n_estimators to 1.1x of mean best iterations from CV
+    # Set n_estimators to 1.1x of mean best iterations from CV (if available)
     if args.kaggle_max and not args.optimize:
         # Kaggle-max + no optimization: keep exactly the configured n_estimators
         final_n_estimators = best_params.get('n_estimators', int(1.1 * mean_best_iterations))
     else:
-        final_n_estimators = int(1.1 * mean_best_iterations)
-    logger.info(f"  n_estimators: {final_n_estimators} (1.1x of mean best iterations)")
+        final_n_estimators = int(1.1 * mean_best_iterations) if mean_best_iterations else best_params.get('n_estimators', 200)
     
     final_params = best_params.copy()
     final_params['n_estimators'] = final_n_estimators
+    
+    # Run Cross-Validation to get CV scores before final training
+    logger.info(f"  Running {args.cv_folds}-Fold GroupKFold Cross-Validation...")
+    logger.info(f"  n_estimators: {final_n_estimators}")
+    
+    cv_scores, cv_best_iterations = group_kfold_cv(
+        X=X_train,
+        y=y_train,
+        groups=train_groups,
+        model_params=final_params,
+        n_splits=args.cv_folds,
+        use_gpu=gpu_available,
+        gpu_params=gpu_params
+    )
+    
+    mean_cv_score = np.mean(cv_scores)
+    std_cv_score = np.std(cv_scores)
+    mean_cv_iterations = np.mean(cv_best_iterations) if cv_best_iterations else final_n_estimators
+    
+    logger.info(f"\n  Cross-Validation Results:")
+    logger.info(f"    Mean Accuracy: {mean_cv_score:.4f} ({mean_cv_score*100:.2f}%)")
+    logger.info(f"    Std Deviation: {std_cv_score:.4f} ({std_cv_score*100:.2f}%)")
+    logger.info(f"    Individual Scores: {[f'{s:.4f}' for s in cv_scores]}")
+    logger.info(f"    Mean Best Iterations: {mean_cv_iterations:.1f}")
+    
+    # Update n_estimators based on CV results if not from optimization
+    if not args.optimize:
+        final_n_estimators = int(1.1 * mean_cv_iterations)
+        final_params['n_estimators'] = final_n_estimators
+        logger.info(f"  Updated n_estimators to {final_n_estimators} (1.1x of CV mean best iterations)")
+    
+    # ========== Step 8: Final Training ==========
+    logger.info("\n[Step 8] Final Training on Full Dataset")
+    logger.info("-" * 60)
     
     logger.info("  Training final model on full training set...")
     final_model = xgb.XGBClassifier(**final_params)
@@ -410,12 +615,89 @@ def main():
     X_train_array = X_train.values
     y_train_array = y_train.values
     
-    final_model.fit(X_train_array, y_train_array)
+    final_model.fit(
+        X_train_array,
+        y_train_array,
+        eval_set=[(X_train_array, y_train_array)],
+        verbose=False
+    )
     logger.info("  ✓ Final model trained")
     
-    # ========== Step 7: SHAP Analysis ==========
+    # Save model and metadata
+    logger.info("\n  Saving model and metadata...")
+    from src.utils.paths import get_models_output_dir
+    models_dir = get_models_output_dir()
+    
+    # Create timestamp for model versioning
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    model_filename = f"xgboost_model_{timestamp}.pkl"
+    model_path = models_dir / model_filename
+    
+    # Save model
+    with open(model_path, 'wb') as f:
+        pickle.dump(final_model, f)
+    logger.info(f"  ✓ Model saved: {model_path}")
+    
+    # Save metadata (feature names, parameters, etc.)
+    metadata = {
+        'timestamp': timestamp,
+        'model_path': str(model_path),
+        'feature_names': X_train.columns.tolist(),
+        'n_features': len(X_train.columns),
+        'n_samples': len(X_train),
+        'model_params': final_params,
+        'cv_strategy': args.cv_strategy,
+        'optimized': args.optimize,
+        'best_score': optimization_result['best_score'] if args.optimize and optimization_result else None,
+        'mean_best_iterations': mean_best_iterations,
+        'n_estimators': final_n_estimators,
+        'cv_scores': cv_scores if 'cv_scores' in locals() else None,
+        'mean_cv_score': float(mean_cv_score) if 'mean_cv_score' in locals() else None,
+        'std_cv_score': float(std_cv_score) if 'std_cv_score' in locals() else None,
+        'mean_cv_iterations': float(mean_cv_iterations) if 'mean_cv_iterations' in locals() else None
+    }
+    
+    metadata_filename = f"xgboost_model_{timestamp}_metadata.json"
+    metadata_path = models_dir / metadata_filename
+    
+    with open(metadata_path, 'w', encoding='utf-8') as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
+    logger.info(f"  ✓ Metadata saved: {metadata_path}")
+    
+    # Also save latest model (for easy access)
+    latest_model_path = models_dir / "xgboost_model_latest.pkl"
+    latest_metadata_path = models_dir / "xgboost_model_latest_metadata.json"
+    
+    import shutil
+    shutil.copy2(model_path, latest_model_path)
+    shutil.copy2(metadata_path, latest_metadata_path)
+    logger.info(f"  ✓ Latest model symlinks created")
+
+    # Generate training monitoring visuals/statistics
+    try:
+        logger.info("\n  Generating training monitoring visuals/statistics...")
+        monitor_dir = get_output_dir('monitoring')
+        evals_result = getattr(final_model, 'evals_result', lambda: {})()
+        # If evals_result is empty (e.g., older xgboost), skip plotting
+        if evals_result:
+            y_train_pred_proba = final_model.predict_proba(X_train_array)[:, 1]
+            y_train_pred = final_model.predict(X_train_array)
+            generate_training_report(
+                evals_result=evals_result,
+                y_true=y_train_array,
+                y_pred=y_train_pred,
+                y_pred_proba=y_train_pred_proba,
+                output_dir=monitor_dir
+            )
+            logger.info(f"  ✓ Training monitoring saved to {monitor_dir}")
+        else:
+            logger.info("  No evals_result available; skipping training curves.")
+    except Exception as e:
+        logger.warning(f"  ⚠ Training monitoring generation failed: {e}")
+    
+    # ========== Step 9: SHAP Analysis ==========
     if args.shap:
-        logger.info("\n[Step 7] SHAP Analysis")
+        logger.info("\n[Step 9] SHAP Analysis")
         logger.info("-" * 60)
         
         # Use a subset of training data for SHAP (for speed)
@@ -427,6 +709,35 @@ def main():
             # Import SHAP analysis function (lazy import to handle import errors gracefully)
             from shap_analysis import analyze_with_shap
             
+            # Predict on training set for error analysis
+            logger.info("  Predicting on training set for error analysis...")
+            y_train_pred = final_model.predict(X_train.values)
+            y_train_true = y_train.values
+            
+            # Get labels for SHAP samples
+            y_shap_true = y_train_true[shap_indices]
+            y_shap_pred = y_train_pred[shap_indices]
+            
+            # Create a validation set using GroupKFold for error analysis
+            logger.info("  Creating validation set using GroupKFold...")
+            from sklearn.model_selection import GroupKFold
+            
+            # Use a single fold for validation set
+            gkf = GroupKFold(n_splits=5)
+            X_train_array = X_train.values
+            y_train_array = y_train.values
+            train_groups_array = train_groups.values
+            
+            # Get first fold as validation set
+            train_idx, val_idx = next(gkf.split(X_train_array, y_train_array, groups=train_groups_array))
+            X_val_shap = X_train.iloc[val_idx]
+            y_val_true = y_train_array[val_idx]
+            
+            # Predict on validation set
+            logger.info("  Predicting on validation set...")
+            y_val_pred = final_model.predict(X_val_shap.values)
+            
+            # Perform SHAP analysis with error analysis
             shap_result = analyze_with_shap(
                 model=final_model,
                 X_val=X_shap,
@@ -434,9 +745,47 @@ def main():
                 max_samples=args.shap_samples,
                 max_display=20,
                 output_dir=args.shap_output_dir,
-                plot=True
+                plot=True,
+                generate_waterfall=True,
+                generate_force=True,
+                generate_dependence=True,
+                generate_interaction=False,  # Disable by default (slower)
+                generate_interaction_dependence=True,  # Enable interaction dependence plots
+                num_waterfall_samples=5,
+                num_dependence_features=10,
+                num_interaction_dependence_features=10,
+                # Error analysis parameters
+                y_true=y_shap_true,
+                y_pred=y_shap_pred,
+                analyze_errors=True,
+                max_error_force_plots=10
             )
             logger.info("  ✓ SHAP analysis complete")
+            
+            # Additional error analysis for validation set
+            logger.info("\n  Performing error analysis on validation set...")
+            try:
+                from shap_analysis import analyze_misclassified_samples
+                from src.utils.paths import get_shap_dir
+                
+                val_error_output_dir = str(get_shap_dir() / 'errors' / 'validation')
+                
+                val_error_result = analyze_misclassified_samples(
+                    model=final_model,
+                    X=X_val_shap,
+                    y_true=y_val_true,
+                    y_pred=y_val_pred,
+                    feature_names=X_train.columns.tolist(),
+                    output_dir=val_error_output_dir,
+                    max_error_force_plots=10,
+                    max_display=20
+                )
+                logger.info("  ✓ Validation set error analysis complete")
+            except Exception as e:
+                logger.warning(f"  ⚠ Validation set error analysis failed: {e}")
+                import traceback
+                logger.debug(f"  Full error: {traceback.format_exc()}")
+            
         except ImportError as e:
             logger.warning(f"  ⚠ SHAP analysis skipped: {e}")
             logger.info("  Tip: Install SHAP with: pip install shap")
@@ -446,10 +795,10 @@ def main():
             import traceback
             logger.debug(f"  Full error: {traceback.format_exc()}")
     else:
-        logger.info("\n[Step 7] Skipping SHAP Analysis")
+        logger.info("\n[Step 9] Skipping SHAP Analysis")
     
-    # ========== Step 8: Test Set Prediction ==========
-    logger.info("\n[Step 8] Test Set Prediction")
+    # ========== Step 10: Test Set Prediction ==========
+    logger.info("\n[Step 10] Test Set Prediction")
     logger.info("-" * 60)
     
     if not args.kaggle_max:
@@ -480,8 +829,8 @@ def main():
     predictions = final_model.predict(X_test_array)
     logger.info(f"  Predictions: {np.bincount(predictions)}")
     
-    # ========== Step 9: Save Submission ==========
-    logger.info("\n[Step 9] Save Submission")
+    # ========== Step 10: Save Submission ==========
+    logger.info("\n[Step 11] Save Submission")
     logger.info("-" * 60)
     
     save_submission(predictions, test_ids, args.output)

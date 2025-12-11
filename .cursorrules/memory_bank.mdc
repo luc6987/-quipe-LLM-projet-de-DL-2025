@@ -1,0 +1,21 @@
+---
+description: Memory Bank Protocol. Critical for maintaining context of CV scores and feature ideas across sessions.
+globs: *
+alwaysApply: true
+---
+
+# Memory Bank Protocol
+
+You have access to a persistent memory bank in `.cursor/memory/`.
+
+## Read-Update Rules
+
+1. **Before suggesting a new model**: READ `@.cursor/memory/experiment_log.md` to avoid repeating failed parameters.
+
+2. **After a training run**: UPDATE `@.cursor/memory/experiment_log.md` with:
+   - Date/Time
+   - Model Architecture
+   - CV Score (Mean + Std)
+   - Key Changes
+
+3. **If the user mentions a new feature idea**: ADD it to `@.cursor/memory/feature_ideas.md`.

@@ -466,7 +466,6 @@ def generate_submission(model, test_dataset, test_ids, data_collator, batch_size
         print("Warning: Cannot generate submission - test dataset or IDs not available.")
         return
     
-    print("\nGenerating predictions for test set...")
     predictions = generate_predictions(model, test_dataset, data_collator, batch_size)
     
     if len(predictions) != len(test_ids):
@@ -759,9 +758,6 @@ def objective(
     batch_size = trial.suggest_categorical("batch_size", [16, 32])
     weight_decay = trial.suggest_float("weight_decay", 0.01, 0.1)
 
-    print(f"\n--- Trial {trial.number} ---")
-    print(f"Params: lr={learning_rate}, r={lora_r}, alpha={lora_alpha}, dropout={lora_dropout}, bs={batch_size}, wd={weight_decay}")
-
     # Use a unique output dir for each trial to avoid conflicts
     trial_output_dir = str(OUTPUT_DIR / f"trial_{trial.number}")
     
@@ -900,7 +896,6 @@ def main():
             print("Error: Optuna is not installed. Please install it to use --optimize.")
             sys.exit(1)
             
-        print("Starting Optuna Hyperparameter Optimization...")
         study = optuna.create_study(direction="maximize")
         
         # Pass static arguments to objective using lambda or partial is tricky with pickle, 
@@ -922,25 +917,14 @@ def main():
             
         study.optimize(objective_wrapper, n_trials=args.n_trials)
         
-        print("\nOptimization Complete!")
-        print("Best trial:")
         trial = study.best_trial
-        print(f"  Value: {trial.value}")
-        print("  Params: ")
-        for key, value in trial.params.items():
-            print(f"    {key}: {value}")
             
         # Save best params
         with open(BEST_PARAMS_FILE, "w") as f:
             json.dump(trial.params, f, indent=4)
-        print(f"Best parameters saved to {BEST_PARAMS_FILE}")
         
         # Retrain with best parameters and save model
         # Use FULL training set (train + val) for final model
-        print("\n" + "="*60)
-        print("Retraining with best parameters on FULL training set...")
-        print("="*60)
-        
         best_lr = trial.params['learning_rate']
         best_r = trial.params['lora_r']
         best_alpha = trial.params['lora_alpha']
@@ -948,18 +932,9 @@ def main():
         best_batch_size = trial.params['batch_size']
         best_wd = trial.params['weight_decay']
         
-        print(f"Best parameters:")
-        print(f"  Learning Rate: {best_lr}")
-        print(f"  LoRA R: {best_r}")
-        print(f"  LoRA Alpha: {best_alpha}")
-        print(f"  LoRA Dropout: {best_dropout}")
-        print(f"  Batch Size: {best_batch_size}")
-        print(f"  Weight Decay: {best_wd}")
-        
         # Combine train and val for final training
         from datasets import concatenate_datasets
         full_train_tokenized = concatenate_datasets([train_tokenized, val_tokenized])
-        print(f"Training on full dataset: {len(full_train_tokenized)} samples (was {len(train_tokenized)} + {len(val_tokenized)})")
         
         trainer, final_accuracy = train_model_with_params(
             learning_rate=best_lr,
@@ -984,9 +959,6 @@ def main():
         
         trainer.save_model(str(OUTPUT_DIR))
         tokenizer.save_pretrained(str(OUTPUT_DIR))
-        print(f"\n✓ Best model saved to {OUTPUT_DIR}")
-        print(f"✓ Final validation accuracy: {final_accuracy:.4f}")
-        print("="*60)
         
         # Export embeddings for all splits
         split_map = {
@@ -1013,13 +985,8 @@ def main():
             print(f"Please run with --optimize first to generate best parameters.")
             sys.exit(1)
         
-        print(f"Loading best parameters from {args.params_file}...")
         with open(args.params_file, "r") as f:
             best_params = json.load(f)
-        
-        print("Best parameters:")
-        for key, value in best_params.items():
-            print(f"  {key}: {value}")
         
         best_lr = best_params['learning_rate']
         best_r = best_params['lora_r']
@@ -1028,12 +995,9 @@ def main():
         best_batch_size = best_params['batch_size']
         best_wd = best_params['weight_decay']
         
-        print("\nStarting training with best parameters on FULL training set...")
-        
         # Combine train and val for final training
         from datasets import concatenate_datasets
         full_train_tokenized = concatenate_datasets([train_tokenized, val_tokenized])
-        print(f"Training on full dataset: {len(full_train_tokenized)} samples (was {len(train_tokenized)} + {len(val_tokenized)})")
         
         trainer, final_accuracy = train_model_with_params(
             learning_rate=best_lr,
@@ -1058,8 +1022,6 @@ def main():
         
         trainer.save_model(str(OUTPUT_DIR))
         tokenizer.save_pretrained(str(OUTPUT_DIR))
-        print(f"\n✓ Model saved to {OUTPUT_DIR}")
-        print(f"✓ Final validation accuracy: {final_accuracy:.4f}")
         
         # Export embeddings for all splits
         split_map = {
@@ -1081,17 +1043,6 @@ def main():
         
     else:
         # Standard Training (Manual Params)
-        print("Starting Standard Training (Use --optimize for Hyperparameter Search)...")
-        
-        print("Starting Standard Training (Use --optimize for Hyperparameter Search)...")
-        print(f"Using default parameters:")
-        print(f"  Learning Rate: {LEARNING_RATE}")
-        print(f"  LoRA R: {LORA_R}")
-        print(f"  LoRA Alpha: {LORA_ALPHA}")
-        print(f"  LoRA Dropout: {LORA_DROPOUT}")
-        print(f"  Batch Size: {BATCH_SIZE}")
-        print(f"  Weight Decay: {WEIGHT_DECAY}")
-        
         trainer, final_accuracy = train_model_with_params(
             learning_rate=LEARNING_RATE,
             lora_r=LORA_R,
@@ -1114,9 +1065,6 @@ def main():
 
         trainer.save_model(str(OUTPUT_DIR))
         tokenizer.save_pretrained(str(OUTPUT_DIR))
-        print(f"\n✓ Model saved to {OUTPUT_DIR}")
-        print(f"✓ Final validation accuracy: {final_accuracy:.4f}")
-        print("Done!")
         
         # Export embeddings for all splits
         split_map = {

@@ -1,0 +1,69 @@
+---
+description: Path Management Protocol. Ensure all cache and output files are organized in dedicated directories.
+globs: *
+alwaysApply: true
+---
+
+# Path Management Protocol
+# 路径管理协议
+
+**Priority**: CRITICAL  
+**Intention**: Ensure all cache and output files are organized in dedicated directories.
+
+## Centralized Path Configuration
+
+**Source of Truth**: Base paths (`output_dir`, `cache_dir`, `huggingface_dir`) are defined in `setup.yml`.
+**Access Point**: All code MUST access paths via `src/utils/paths.py`, which loads from `setup.yml`.
+
+所有缓存和输出路径必须通过 `src/utils/paths.py` 统一管理。该模块会读取 `setup.yml` 中的配置。
+
+### Cache Directory Structure
+
+All cache files (intermediate processing results, Optuna studies, model caches, etc.) MUST be placed in:
+- `cache/` - Main cache directory at project root
+  - `cache/models/` - For cached model files
+  - `cache/data/` - For cached data processing results (cleaned dataframes, feature extracts)
+  - `cache/optuna/` - For Optuna study databases and configuration files
+- `.cache/huggingface/` - For HuggingFace model cache (set via environment variables)
+
+### Output Directory Structure
+
+All output files (submission files, model checkpoints, visualizations, etc.) MUST be placed in:
+- `output/` - Main output directory at project root
+  - `output/models/` - For trained model checkpoints and saved models
+  - `output/submissions/` - For Kaggle submission CSV files
+  - `output/visualizations/` - For plots, charts, and visualization outputs
+  - `output/embeddings/` - For embedding vectors
+  - `output/shap/` - For SHAP analysis results
+  - `output/logs/` - For training logs
+
+### Usage Guidelines
+
+1. **Import path utilities:**
+```python
+from src.utils.paths import (
+    get_cache_dir, get_output_dir,
+    get_optuna_cache_dir, get_data_cache_dir,
+    get_models_output_dir, get_submissions_dir,
+    get_visualizations_dir, get_embeddings_dir,
+    get_shap_dir, setup_huggingface_cache
+)
+```
+
+2. **Before importing HuggingFace libraries:**
+```python
+from src.utils.paths import setup_huggingface_cache
+setup_huggingface_cache()  # Must be called before importing transformers/huggingface_hub
+```
+
+3. **Never hardcode paths** - Always use path utilities from `src/utils/paths.py`
+
+4. **Default behavior:**
+   - Functions that accept `cache_dir` or `output_dir` parameters should use unified paths as defaults
+   - If a relative path is provided, it should be resolved relative to appropriate cache/output subdirectory
+
+### Migration Notes
+
+- Old scattered paths (e.g., `./deberta-embeddings-output`, relative `visualizations/`) should be migrated to unified structure
+- Model checkpoints should be in `output/models/` not project root
+- All submission files should be in `output/submissions/`

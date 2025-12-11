@@ -66,7 +66,6 @@ def run_optuna_search(train_dataset, val_dataset, tokenizer, data_collator, args
     os.makedirs(args.output_dir, exist_ok=True)
     with open(os.path.join(args.output_dir, "best_optuna_params.json"), "w") as f:
         json.dump(best_params, f, indent=4)
-    print(f"Optuna best accuracy: {study.best_value:.4f}")
     return best_params
 
 
@@ -132,7 +131,6 @@ def main():
     oof_logits = np.zeros(len(labels), dtype=np.float32)
 
     for fold_idx, (train_idx, val_idx) in enumerate(skf.split(np.zeros(len(labels)), labels)):
-        print(f"\n=== Fold {fold_idx+1}/{args.folds} ===")
         fold_dir = os.path.join(args.output_dir, f"fold_{fold_idx}")
         os.makedirs(fold_dir, exist_ok=True)
 
@@ -163,7 +161,6 @@ def main():
         eval_metrics = trainer.evaluate()
         fold_accuracy = eval_metrics.get("eval_accuracy", val_acc)
         fold_accuracies.append(fold_accuracy)
-        print(f"Fold {fold_idx+1} accuracy: {fold_accuracy:.4f}")
 
         predictions = trainer.predict(val_dataset)
         logits = predictions.predictions
@@ -196,11 +193,6 @@ def main():
     log_line = f"| 2025-11-26 | TEXT-CV-DeBERTa | {mean_acc:.4f}±{std_acc:.4f} | N/A | {args.model_name} {args.folds}-fold CV |\n"
     with open(log_path, "a") as log_file:
         log_file.write(log_line)
-
-    print("\n=== CV Summary ===")
-    print(f"Accuracies: {fold_accuracies}")
-    print(f"Mean Accuracy: {mean_acc:.4f} ± {std_acc:.4f}")
-    print(f"Summary saved to {args.output_dir}")
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ output/
 .kaggle/
 .env
 .cache/
-.cursor/
+.output/
 
 # macOS
 .DS_Store

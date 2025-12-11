@@ -1,0 +1,8 @@
+# Preprocessing & Vis/Stat conventions
+
+- Preprocessing home: keep all preprocessing / feature engineering code in `src/preprocessing/` (e.g., `xgboost_feature_engineering.py`, `camembert_preprocessing.py`, `generate_feature_plan.py`, `feature_processing_plan.json`). Do not recreate modules under `src/xgboost` or `src/camembert`.
+- Imports: use `from src.preprocessing.xgboost_feature_engineering import engineer_features` and `from src.preprocessing.camembert_preprocessing import extract_and_fuse_text_fields` / `load_preprocessed_camembert_texts`.
+- Outputs: unified preprocessing outputs, stats, and flags go under `output/preprocessing/` (including `visualizations/stats`).
+
+- Visualization/Statistics/Monitoring home: all such modules now live in `src/vis_stat/` (consolidated from former `statistics/`, `visualization/`, `monitoring/`).
+- Imports: use `src.vis_stat` modules (`plots`, `shap_analysis`, `feature_interaction_analysis`, `training_monitor`, `error_analysis`, `plan_optimizer`, `generate_feature_statistics`, `camembert_visualization`, `visualize_camembert_pca`, `generate_shap_visualization`, etc.). Do not import from removed `src/visualization`, `src/statistics`, or `src/monitoring`.

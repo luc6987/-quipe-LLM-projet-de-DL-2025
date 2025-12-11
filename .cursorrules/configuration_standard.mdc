@@ -1,0 +1,33 @@
+---
+description: Configuration Management Protocol. Enforce setup.yml as the single source of truth.
+globs: *.py
+alwaysApply: true
+---
+
+# Configuration Management Protocol
+# 配置管理协议
+
+**Priority**: CRITICAL
+**Intention**: Centralize all hyperparameters and settings in `setup.yml`.
+
+## Single Source of Truth
+
+1. **Rule**: All configurable parameters (model hyperparameters, features flags, global constants) MUST be defined in `setup.yml`.
+2. **Rule**: NO hardcoding of parameters in Python scripts (e.g., `learning_rate = 0.001` is forbidden).
+3. **Rule**: `src/utils/config.py` is the ONLY authorized way to load configuration.
+
+## Usage Pattern
+
+**Correct usage**:
+```python
+from src.utils.config import load_config
+
+config = load_config()
+lr = config['neural']['learning_rate']
+```
+
+**Forbidden usage**:
+```python
+parser = argparse.ArgumentParser() # Avoid argparse for hyperparameters
+lr = 0.001 # Hardcoded
+```

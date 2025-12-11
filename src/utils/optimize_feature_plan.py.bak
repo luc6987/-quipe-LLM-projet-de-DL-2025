@@ -1,0 +1,119 @@
+import json
+import pandas as pd
+import os
+import sys
+
+# Define input/output paths
+PLAN_PATH = '/Data/yuguang.yao/-quipe-LLM-projet-de-DL-2025/src/xgboost/feature_processing_plan.json'
+STATS_PATH = '/Data/yuguang.yao/-quipe-LLM-projet-de-DL-2025/output/visualizations/stats/feature_statistics_report.json'
+SHAP_PATH = '/Data/yuguang.yao/-quipe-LLM-projet-de-DL-2025/output/shap/feature_importance.csv'
+OUTPUT_PLAN_PATH = '/Data/yuguang.yao/-quipe-LLM-projet-de-DL-2025/src/xgboost/feature_processing_plan_optimized.json'
+
+def load_data():
+    with open(PLAN_PATH, 'r') as f:
+        plan = json.load(f)
+    
+    with open(STATS_PATH, 'r') as f:
+        stats = json.load(f)
+        # Convert list to dict for easier lookup
+        stats_dict = {item['feature_name']: item for item in stats}
+        
+    try:
+        shap = pd.read_csv(SHAP_PATH)
+    except:
+        shap = pd.DataFrame(columns=['feature', 'mean_abs_shap'])
+        
+    return plan, stats_dict, shap
+
+def get_shap_importance(feature_name, shap_df):
+    # Try exact match
+    if feature_name in shap_df['feature'].values:
+        return shap_df[shap_df['feature'] == feature_name]['mean_abs_shap'].iloc[0]
+    
+    # Try partial match (e.g. raw 'user.listed_count' -> encoded 'user.listed_count')
+    # or derived features (e.g. 'user.created_at' -> 'user.account_age_days')
+    # This is a simple heuristic
+    matches = shap_df[shap_df['feature'].apply(lambda x: feature_name in x)]
+    if not matches.empty:
+        return matches['mean_abs_shap'].max()
+        
+    return 0.0
+
+def process_features():
+    plan, stats, shap = load_data()
+    new_plan = plan.copy()
+    
+    print(f"{'Feature':<40} | {'Action':<10} | {'Reason'}")
+    print("-" * 100)
+    
+    for feature_name in plan.keys():
+        stat = stats.get(feature_name)
+        current_config = plan[feature_name]
+        
+        # Default decision: Keep what we have, unless rules trigger
+        new_action = current_config['action']
+        new_method = current_config['method']
+        new_reason = current_config['reason']
+        
+        # --- Logic Rules ---
+        
+        # 1. Stats Availability
+        if not stat:
+            # If no stats, keep as is (safe)
+            pass
+        else:
+            missing_pct = stat['missing_percentage']
+            # zero_inflation = stat['statistics'].get('zero_inflation_rate', 0) if stat['statistics'] else 0
+            is_numeric = stat['feature_type'] == 'numeric'
+            
+            # 2. Text Features (The "Blind Spot" fix)
+            if feature_name in ['text', 'full_text', 'extended_tweet.full_text', 'quoted_status.text']:
+                new_action = 'transform'
+                new_method = 'llm_embedding'
+                new_reason = "HIGH VALUE: Semantics via LLM Embeddings (PCA from DeBERTa)"
+                
+            # 3. High Missing (>99%) -> DROP
+            elif missing_pct > 99.0:
+                 # Check if it was target encoded (exception)
+                 if 'target_encoding' not in current_config['method']:
+                    new_action = 'drop'
+                    new_method = 'none'
+                    new_reason = f"DROP: High missing rate ({missing_pct:.2f}%)"
+            
+            # 4. Zero Variance (Single Value) -> DROP
+            elif len(stat.get('top_values', [])) <= 1 and missing_pct < 100:
+                 # If only 1 unique value exists (excluding NaN)
+                 new_action = 'drop'
+                 new_method = 'none'
+                 new_reason = "DROP: Zero variance (Constant value)"
+            
+            # 5. SHAP Rescue
+            # If SHAP importance is high, force KEEP even if it looks bad
+            importance = get_shap_importance(feature_name, shap)
+            if importance > 0.05: # Arbitrary threshold for 'Important'
+                new_action = 'keep' # or transform
+                if current_config['action'] == 'drop':
+                     new_action = 'keep'
+                     new_method = 'passthrough' # Restore it
+                new_reason = f"KEEP: High SHAP Importance ({importance:.4f})"
+                
+        # Update Plan
+        new_plan[feature_name] = {
+            "action": new_action,
+            "method": new_method,
+            "reason": new_reason
+        }
+        
+        # Log changes
+        if new_action != current_config['action'] or new_method != current_config['method']:
+            print(f"{feature_name:<40} | {new_action:<10} | {new_reason}")
+            
+    # Save optimized plan
+    with open(OUTPUT_PLAN_PATH, 'w') as f:
+        json.dump(new_plan, f, indent=2)
+        
+    print("-" * 100)
+    print(f"Optimized plan saved to: {OUTPUT_PLAN_PATH}")
+
+if __name__ == "__main__":
+    process_features()

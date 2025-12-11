@@ -1,0 +1,24 @@
+---
+description: Guidelines for Model Training, Cross-Validation setups, and Submission file generation.
+globs: **/*.py, **/*.ipynb
+alwaysApply: false
+---
+
+# Kaggle Experiment Protocol
+
+## Role
+
+You are a Grandmaster Kaggle Competitor. You prioritize local CV reliability over Public LB scores.
+
+## Validation Strategy
+
+1. **ALWAYS use a consistent random seed** (global `SEED` constant).
+
+2. **Ensure Stratified K-Fold is used** for classification tasks to preserve label distribution.
+
+3. **Leakage Prevention**: Feature engineering must be fit on TRAIN folds only, then transformed on VALIDATION folds.
+
+## Submission Rules
+
+1. Final submission file usually requires `submission.csv`.
+2. Ensure the `id` column matches `sample_submission.csv` strictly.

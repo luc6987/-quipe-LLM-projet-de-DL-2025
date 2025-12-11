@@ -1,0 +1,271 @@
+# ============================================================================
+# 路径配置 / Path Configuration
+# ============================================================================
+paths:
+  output_dir: "output"  # 主输出目录 / Main output directory
+  cache_dir: "output/preprocessing/cache"  # 预处理缓存目录 / Preprocessing cache directory
+  huggingface_dir: "output/preprocessing/huggingface"  # HuggingFace模型缓存目录 / HuggingFace model cache directory
+  visualizations_dir: "output/preprocessing/visualizations"  # 可视化输出目录（库统计等）/ Visualization output directory (library stats etc.)
+  shap_dir: "output/visualization/shap"  # SHAP分析输出目录 / SHAP analysis output directory
+  monitoring_dir: "output/monitoring"  # 训练监控输出目录 / Training monitoring output directory
+  feature_plans_dir: "output/visualization/feature_plans"  # 特征计划备份目录 / Feature plan backup directory
+  embeddings_dir: "output/preprocessing/embeddings"  # 文本嵌入输出目录 / Text embedding output directory
+
+# ============================================================================
+# 预处理配置 / Preprocessing Configuration
+# ============================================================================
+preprocessing:
+  # 文本列列表：这些列将被提取用于文本嵌入 / Text columns list: these columns will be extracted for text embeddings
+  text_columns:
+    - "text"  # 主推文文本 / Main tweet text
+    - "extended_tweet.full_text"  # 扩展推文完整文本 / Extended tweet full text
+    - "full_text"  # 完整文本 / Full text
+    - "quoted_status.text"  # 引用推文文本 / Quoted status text
+    - "user.description"  # 用户描述 / User description
+  
+  # 需要删除的列：这些列在特征工程中会被移除 / Columns to drop: these columns will be removed in feature engineering
+  drop_columns:
+    - "text"  # 原始文本（已提取元数据）/ Raw text (metadata extracted)
+    - "extended_tweet.full_text"  # 扩展文本（已提取元数据）/ Extended text (metadata extracted)
+    - "quoted_status.text"  # 引用文本（已提取元数据）/ Quoted text (metadata extracted)
+    - "user.name"  # 用户名（PII，隐私信息）/ User name (PII, privacy info)
+    - "user.screen_name"  # 用户屏幕名称（PII）/ User screen name (PII)
+    - "user.location"  # 用户位置（已提取元数据）/ User location (metadata extracted)
+    - "user.url"  # 用户URL（字符串特征）/ User URL (string feature)
+    - "challenge_id"  # 挑战ID（标识符，不用于建模）/ Challenge ID (identifier, not for modeling)
+    - "id"  # 推文ID（标识符）/ Tweet ID (identifier)
+    - "id_str"  # 推文ID字符串（标识符）/ Tweet ID string (identifier)
+  
+  # 偏斜特征列表：这些特征将应用对数变换 / Skewed features list: these features will be log-transformed
+  skewed_features:
+    - "user.listed_count"  # 用户列表数 / User listed count
+    - "user.statuses_count"  # 用户推文数 / User statuses count
+    - "user.favourites_count"  # 用户点赞数 / User favourites count
+    - "user.followers_count"  # 用户粉丝数 / User followers count
+    - "user.friends_count"  # 用户关注数 / User friends count
+    - "retweet_count"  # 转发数 / Retweet count
+    - "favorite_count"  # 点赞数 / Favorite count
+    - "quote_count"  # 引用数 / Quote count
+    - "reply_count"  # 回复数 / Reply count
+  
+  # 官方词汇列表：用于检测用户描述中的官方标识 / Official words list: used to detect official indicators in user descriptions
+  official_words:
+    - "official"  # 官方 / Official
+    - "page"  # 页面 / Page
+    - "author"  # 作者 / Author
+    - "verified"  # 已验证 / Verified
+    - "account"  # 账户 / Account
+    - "team"  # 团队 / Team
+    - "company"  # 公司 / Company
+    - "brand"  # 品牌 / Brand
+  
+  split_text_nontext: true  # 是否分离文本和非文本特征 / Whether to split text and non-text features
+  hashtag_library_top_k: 1000  # 保留前K个最频繁的标签 / Keep top K most frequent hashtags
+  mention_library_top_k: 1000  # 保留前K个最频繁的提及 / Keep top K most frequent mentions
+
+# ============================================================================
+# 语义特征配置 / Semantic Features Configuration
+# ============================================================================
+semantic:
+  use_semantic_features: true  # 是否使用语义特征 / Whether to use semantic features
+  embedding_model: "camembert"  # 嵌入模型选择: "camembert" 或 "deberta" / Embedding model choice: "camembert" or "deberta"
+  embedding_file: "output/preprocessing/embeddings/bert_embeddings.npy"  # 预计算的嵌入文件路径 / Pre-computed embedding file path
+  embedding_dim: 768  # 嵌入维度（DeBERTa v3-base和CamemBERT-base均为768）/ Embedding dimension (768 for both DeBERTa v3-base and CamemBERT-base)
+  
+  # CamemBERT模型配置 / CamemBERT Model Configuration
+  camembert_model_name: "camembert-base"  # CamemBERT模型名称 / CamemBERT model name
+  camembert_max_length: 256  # CamemBERT最大序列长度 / CamemBERT maximum sequence length
+  camembert_batch_size: 32  # CamemBERT批处理大小 / CamemBERT batch size
+  extract_style_features: false  # 是否提取文本风格特征 / Whether to extract text style features
+  classify_urls: true  # 是否分类和替换URL / Whether to classify and replace URLs
+  
+  # CamemBERT微调配置 / CamemBERT Fine-tuning Configuration
+  use_finetuned_probabilities: false  # 是否使用微调后的概率特征（而非嵌入特征）/ Whether to use fine-tuned probability features (instead of embeddings). 设置为 false 使用倒数第二层嵌入 / Set to false to use second-to-last layer embeddings
+  finetune_model_path: "output/models/camembert_finetuned"  # 微调模型保存/加载路径 / Fine-tuned model save/load path
+  finetune_epochs: 1  # 微调训练轮数 / Number of fine-tuning epochs
+  finetune_learning_rate: 2.0e-5  # 微调学习率 / Fine-tuning learning rate
+  finetune_batch_size: 16  # 微调批处理大小 / Fine-tuning batch size
+  finetune_validation_split: 0.2  # 验证集比例 / Validation set proportion
+  finetune_early_stopping_patience: 2  # 早停patience / Early stopping patience
+  finetune_visualization_dir: "output/camembert/finetuning"  # 微调可视化输出目录 / Fine-tuning visualization output directory
+  finetune_save_plots: true  # 是否保存可视化图表 / Whether to save visualization plots
+  
+  # DeBERTa模型配置 / DeBERTa Model Configuration (for backward compatibility)
+  model_name: "microsoft/deberta-v3-base"  # DeBERTa模型名称 / DeBERTa model name
+  max_length: 128  # DeBERTa最大序列长度 / DeBERTa maximum sequence length
+  
+  # 通用配置 / Common Configuration
+  pca_components: 16  # PCA降维后的维度 / Number of PCA components after dimensionality reduction
+  batch_size: 32  # 批处理大小（用于DeBERTa）/ Batch size (for DeBERTa)
+
+# ============================================================================
+# 可视化配置 / Visualization Configuration
+# ============================================================================
+visualization:
+  figsize: [12, 8]  # 图形尺寸 [宽度, 高度] / Figure size [width, height]
+  dpi: 300  # 图形分辨率（每英寸点数）/ Figure resolution (dots per inch)
+  font_size: 10  # 字体大小 / Font size
+  max_display: 20  # 最大显示特征数 / Maximum number of features to display
+  colors:  # 颜色列表（用于图表）/ Color list (for charts)
+    - "#1f77b4"  # 蓝色 / Blue
+    - "#ff7f0e"  # 橙色 / Orange
+    - "#2ca02c"  # 绿色 / Green
+    - "#d62728"  # 红色 / Red
+    - "#9467bd"  # 紫色 / Purple
+
+# ============================================================================
+# 训练监控配置 / Training Monitoring Configuration
+# ============================================================================
+monitoring:
+  plot_training_curve: true  # 是否绘制训练曲线 / Whether to plot training curves
+  plot_frequency: 10  # 绘图频率（每N轮）/ Plot frequency (every N rounds)
+  save_error_stats: true  # 是否保存错误统计 / Whether to save error statistics
+  error_stats_file: "output/monitoring/error_statistics.json"  # 错误统计文件路径 / Error statistics file path
+
+# ============================================================================
+# 优化配置 / Optimization Configuration
+# ============================================================================
+optimization:
+  # SHAP相关配置 / SHAP-related configuration
+  shap_drop_threshold: 0.000  # SHAP计划优化阈值：低于此值的特征将在计划中标记为drop / SHAP plan optimization threshold: features below this will be marked as drop in plan
+  shap_filter_threshold: 0.000  # SHAP特征过滤阈值：在特征工程阶段，低于此值的特征将被自动drop / SHAP feature filtering threshold: features below this will be auto-dropped in feature engineering
+  use_shap_filter: false  # 是否启用SHAP特征过滤（在特征工程阶段）/ Whether to enable SHAP-based feature filtering (in feature engineering stage)
+  min_shap_threshold: 0.000  # SHAP分析阶段特征过滤阈值，设置为0表示不过滤 / SHAP analysis feature filtering threshold, set to 0 to disable filtering
+  
+  # Optuna超参数优化配置 / Optuna hyperparameter optimization configuration
+  n_trials: 100  # Optuna优化试验次数 / Number of Optuna optimization trials
+  timeout: null  # 优化超时时间（秒），null表示无限制 / Optimization timeout in seconds, null means no limit
+  cv_folds: 5  # 交叉验证折数 / Number of cross-validation folds
+  cv_strategy: "group"  # CV策略："group"（按用户分组）或"stratified"（分层）/ CV strategy: "group" (by user) or "stratified" (stratified)
+
+# ============================================================================
+# 模型选择开关 / Model Selection Switch
+# ============================================================================
+model:
+  active: "xgboost"  # 可选: "xgboost", "lightgbm" 或 "catboost" / Options: "xgboost", "lightgbm" or "catboost"
+
+# ============================================================================
+# XGBoost配置 / XGBoost Configuration
+# ============================================================================
+xgboost:
+  # 数据文件路径 / Data file paths
+  train_file: "data/train.jsonl"  # 训练数据文件路径 / Training data file path
+  test_file: "data/kaggle_test.jsonl"  # 测试数据文件路径 / Test data file path
+  output_file: "submission.csv"  # 预测结果输出文件名（将保存到output/submissions/目录）/ Prediction output filename (will be saved to output/submissions/ directory)
+  
+  # ========================================================================
+  # XGBoost超参数 / XGBoost Hyperparameters
+  # ========================================================================
+  params:
+    objective: "binary:logistic"  # 目标函数：二分类逻辑回归 / Objective function: binary logistic regression
+    eval_metric: ["logloss", "error", "auc"]  # 评估指标列表 / Evaluation metrics list
+    learning_rate: 0.03  # 学习率（步长收缩）/ Learning rate (step size shrinkage)
+    max_depth: 6  # 树的最大深度 / Maximum tree depth
+    subsample: 0.8  # 样本采样比例（防止过拟合）/ Subsample ratio (prevent overfitting)
+    colsample_bytree: 0.75  # 特征采样比例（每棵树）/ Column sampling ratio (per tree)
+    min_child_weight: 5  # 叶子节点最小权重和（防止过拟合）/ Minimum sum of instance weight in a child
+    n_estimators: 400  # 树的数量（epoch数）/ Number of trees (number of epochs)
+    gamma: 0.2  # 最小损失减少量（分裂阈值）/ Minimum loss reduction required for split
+    reg_alpha: 0.15  # L1正则化项（Lasso）/ L1 regularization term (Lasso)
+    reg_lambda: 1.5  # L2正则化项（Ridge）/ L2 regularization term (Ridge)
+    random_state: 42  # 随机种子（确保可复现性）/ Random seed (for reproducibility)
+    n_jobs: -1  # 并行线程数（-1表示使用所有CPU核心）/ Number of parallel threads (-1 means all CPU cores)
+    scale_pos_weight_ratio: 1.127  # 正样本权重比例（用于处理类别不平衡，将乘以实际计算值）/ Positive class weight ratio (for class imbalance, will be multiplied by actual calculation)
+
+  # ========================================================================
+  # 执行标志 / Execution Flags
+  # ========================================================================
+  use_gpu: true  # 是否使用GPU加速 / Whether to use GPU acceleration
+  optimize: false  # 是否启用Optuna超参数优化（true=启用，false=使用默认参数）/ Whether to enable Optuna hyperparameter optimization (true=enabled, false=use default params)
+  shap: true  # 是否进行SHAP分析 / Whether to perform SHAP analysis
+  shap_samples: 1000  # SHAP分析使用的样本数（用于加速计算）/ Number of samples for SHAP analysis (for faster computation)
+  submit: false  # 是否自动提交到Kaggle / Whether to auto-submit to Kaggle
+  competition: "influencers-or-observers-predicting-social-roles"  # Kaggle竞赛名称 / Kaggle competition name
+  submission_message: "XGBoost submission with library features"  # 提交消息 / Submission message
+  
+# ============================================================================
+# LightGBM配置 / LightGBM Configuration
+# ============================================================================
+lightgbm:
+  # 数据文件路径 / Data file paths
+  train_file: "data/train.jsonl"  # 训练数据文件路径 / Training data file path
+  test_file: "data/kaggle_test.jsonl"  # 测试数据文件路径 / Test data file path
+  output_file: "submission.csv"  # 预测结果输出文件名 / Prediction output filename
+
+  # ========================================================================
+  # LightGBM超参数 / LightGBM Hyperparameters
+  # ========================================================================
+  params:
+    boosting_type: "gbdt"
+    objective: "binary"
+    metric: ["binary_logloss", "auc"]
+    learning_rate: 0.05
+    num_leaves: 64
+    max_depth: -1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    reg_alpha: 0.1
+    reg_lambda: 1.0
+    min_child_samples: 20
+    n_estimators: 400
+    random_state: 42
+    n_jobs: -1
+
+  # ========================================================================
+  # 执行标志 / Execution Flags
+  # ========================================================================
+  use_gpu: true  # 是否使用GPU加速 / Whether to use GPU acceleration
+  shap: true  # 是否进行SHAP分析 / Whether to perform SHAP analysis
+  shap_samples: 1000  # SHAP分析使用的样本数 / Number of samples for SHAP analysis
+
+# ============================================================================
+# CatBoost配置 / CatBoost Configuration
+# ============================================================================
+catboost:
+  # 数据文件路径 / Data file paths
+  train_file: "data/train.jsonl"  # 训练数据文件路径 / Training data file path
+  test_file: "data/kaggle_test.jsonl"  # 测试数据文件路径 / Test data file path
+  output_file: "submission.csv"  # 预测结果输出文件名 / Prediction output filename
+
+  # ========================================================================
+  # CatBoost超参数 / CatBoost Hyperparameters
+  # ========================================================================
+  params:
+    loss_function: "Logloss"  # 损失函数：二分类对数损失 / Loss function: binary logloss
+    eval_metric: "Logloss"  # 评估指标 / Evaluation metric
+    learning_rate: 0.05  # 学习率（步长收缩）/ Learning rate (step size shrinkage)
+    depth: 6  # 树的最大深度 / Maximum tree depth
+    iterations: 400  # 迭代次数（树的数量）/ Number of iterations (number of trees)
+    bootstrap_type: "Bernoulli"  # Bootstrap类型：必须为"Bernoulli"才能使用subsample / Bootstrap type: must be "Bernoulli" to use subsample
+    subsample: 0.8  # 样本采样比例（防止过拟合）/ Subsample ratio (prevent overfitting)
+    rsm: 0.8  # 特征采样比例（随机子空间方法）/ Feature sampling ratio (random subspace method)
+    l2_leaf_reg: 1.0  # L2正则化项（Ridge）/ L2 regularization term (Ridge)
+    min_data_in_leaf: 3  # 叶子节点最小样本数（防止过拟合）/ Minimum samples in leaf (prevent overfitting)
+    random_seed: 42  # 随机种子（确保可复现性）/ Random seed (for reproducibility)
+    thread_count: -1  # 并行线程数（-1表示使用所有CPU核心）/ Number of parallel threads (-1 means all CPU cores)
+    verbose: false  # 是否输出训练过程 / Whether to output training progress
+
+  # ========================================================================
+  # 执行标志 / Execution Flags
+  # ========================================================================
+  use_gpu: true  # 是否使用GPU加速 / Whether to use GPU acceleration
+  shap: true  # 是否进行SHAP分析 / Whether to perform SHAP analysis
+  shap_samples: 1000  # SHAP分析使用的样本数 / Number of samples for SHAP analysis
+
+# ============================================================================
+# 神经网络配置 / Neural Network Configuration
+# ============================================================================
+neural:
+  max_len: 128  # 最大序列长度 / Maximum sequence length
+  batch_size: 16  # 批次大小 / Batch size
+  epochs: 5  # 训练轮数 / Number of training epochs
+  learning_rate: 2.0e-5  # 学习率 / Learning rate
+  model_name: "microsoft/deberta-v3-base"  # 预训练模型名称 / Pre-trained model name
+
+# ============================================================================
+# 堆叠集成配置 / Stacking Ensemble Configuration
+# ============================================================================
+stacking:
+  enabled: false # 是否启用stacking模式 / Whether to enable stacking mode
+  n_folds: 5  # 交叉验证折数 / Number of cross-validation folds
+  text_components: 32  # 文本嵌入PCA降维后的维度 / Text embedding dimension after PCA reduction

@@ -1,0 +1,41 @@
+---
+description: Python data science standards. Best practices for Pandas, Numpy, and Memory Management.
+globs: **/*.py, **/*.ipynb
+alwaysApply: false
+---
+
+# Data Science Engineering Standards
+
+**Context**: Applied when writing data processing pipelines, feature engineering, or optimized training loops.
+
+## Performance Standards
+
+### Vectorization First
+
+**Rule**: NEVER use `for` loops for dataframe operations. Use `pandas` built-ins or `numpy` vectorization.
+
+**Bad Example**:
+```python
+for index, row in df.iterrows(): ...
+```
+
+**Good Example**:
+```python
+df['new_col'] = df['col_a'] + df['col_b']
+```
+
+### Memory Hygiene
+
+**Rule**: 
+1. Explicitly downcast types (e.g., `float64` -> `float32`, `int64` -> `int8/16`) to save memory.
+2. Use `del` and `gc.collect()` after processing large dataframes.
+
+## Code Quality Standards
+
+### Type Safety
+
+**Rule**: Use `pydantic` for config objects and `typing.Annotated` for function signatures in utility scripts (`utils/*.py`).
+
+### Path Management
+
+**Rule**: NEVER hardcode paths. Use `pathlib.Path` and relative paths from project root.
