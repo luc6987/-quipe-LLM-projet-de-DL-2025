@@ -1,13 +1,13 @@
 """
 Feature Engineering Module
-特征工程模块 / Module d'ingénierie des caractéristiques / Feature Engineering Module / Feature-Engineering-Modul
+ / Module d'ingénierie des caractéristiques / Feature Engineering Module / Feature-Engineering-Modul
 
 Implements feature engineering based on optimized feature processing plan.
-基于优化后的特征处理计划实现特征工程。
+
 
 Key Features:
-1. Network Asymmetry (网络不对称性 / Asymétrie du réseau / Network Asymmetry / Netzwerk-Asymmetrie)
-2. Behavioral Rates (行为速率 / Taux comportemental / Behavioral Rates / Verhaltensraten)
+1. Network Asymmetry ( / Asymétrie du réseau / Network Asymmetry / Netzwerk-Asymmetrie)
+2. Behavioral Rates ( / Taux comportemental / Behavioral Rates / Verhaltensraten)
 3. Tweet-level Interaction Features
 4. Feature processing based on feature_processing_plan.json
 """
@@ -27,7 +27,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from typing import Dict, Tuple, Optional
-# 从统一导入模块导入所有库
+# 
 from src._imports import (
     sklearn_PCA, sklearn_GroupKFold, sklearn_StratifiedKFold
 )
@@ -79,7 +79,7 @@ except ImportError as e:
 def load_feature_plan(plan_path: Optional[str] = None) -> Dict:
     """
     Load feature processing plan from JSON file.
-    从JSON文件加载特征处理计划。
+    JSON
     
     Args:
         plan_path: Path to feature_processing_plan.json. If None, uses default path.
@@ -110,7 +110,7 @@ def load_feature_plan(plan_path: Optional[str] = None) -> Dict:
 def calculate_account_age(created_at_str: str) -> Optional[int]:
     """
     Calculate account age in days from Twitter created_at string.
-    从Twitter created_at字符串计算账户年龄（天数）。
+    Twitter created_at
     
     Twitter format: "Wed Mar 17 12:59:53 +0000 2021"
     
@@ -137,7 +137,7 @@ def calculate_account_age(created_at_str: str) -> Optional[int]:
 def extract_date_components(df: pd.DataFrame, col: str) -> pd.DataFrame:
     """
     Extract date components from timestamp column.
-    从时间戳列提取日期组件。
+    
     
     Args:
         df: DataFrame
@@ -185,7 +185,7 @@ def frequency_encoding(df: pd.DataFrame, col: str, is_train: bool,
                       transformers: Dict, feature_name: str) -> Tuple[pd.DataFrame, Dict]:
     """
     Apply frequency encoding to a categorical column.
-    对类别列应用频率编码。
+    
     
     Args:
         df: DataFrame
@@ -252,7 +252,7 @@ def ordinal_encoding(df: pd.DataFrame, col: str, is_train: bool,
                      transformers: Dict, feature_name: str) -> Tuple[pd.DataFrame, Dict]:
     """
     Apply ordinal encoding to a categorical column.
-    对类别列应用序数编码。
+    
     
     Args:
         df: DataFrame
@@ -296,7 +296,7 @@ def ordinal_encoding(df: pd.DataFrame, col: str, is_train: bool,
 def bool_to_int(df: pd.DataFrame, col: str) -> pd.DataFrame:
     """
     Convert boolean column to integer (0/1).
-    将布尔列转换为整数（0/1）。
+    0/1
     
     Args:
         df: DataFrame
@@ -340,7 +340,7 @@ def impute_median(df: pd.DataFrame, col: str, is_train: bool,
                   transformers: Dict, feature_name: str) -> Tuple[pd.DataFrame, Dict]:
     """
     Impute missing values with median.
-    用中位数填充缺失值。
+    
     
     Args:
         df: DataFrame
@@ -376,8 +376,8 @@ def extract_binary_flag(df: pd.DataFrame, col: str, new_col_name: Optional[str] 
     """
     Extract binary flag from a column (NaN -> 0, Value -> 1).
     Core signal: NaN means broadcast, Value means reply.
-    从列中提取二进制标志（NaN -> 0, 有值 -> 1）。
-    核心信号：NaN表示广播，有值表示回复。
+    NaN -> 0,  -> 1
+    NaN
     
     Args:
         df: DataFrame
@@ -402,7 +402,7 @@ def clean_and_categorize_source(df: pd.DataFrame, col: str, is_train: bool,
                                 transformers: Dict, feature_name: str) -> Tuple[pd.DataFrame, Dict]:
     """
     Clean HTML tags from source and categorize as Mobile/Web/Pro Tools/Other.
-    清洗source字段的HTML标签，并分类为Mobile/Web/Pro Tools/Other。
+    sourceHTMLMobile/Web/Pro Tools/Other
     
     Categories:
     - Mobile: Twitter for iPhone/Android
@@ -483,7 +483,7 @@ def clean_and_categorize_source(df: pd.DataFrame, col: str, is_train: bool,
 def extract_text_metadata(df: pd.DataFrame, col: str, keep_original: bool = False) -> pd.DataFrame:
     """
     Extract metadata from text column: length, mention count, hashtag count, URL presence.
-    从文本列提取元数据：长度、提及数量、标签数量、URL存在性。
+    URL
     
     Args:
         df: DataFrame
@@ -518,7 +518,7 @@ def extract_text_metadata(df: pd.DataFrame, col: str, keep_original: bool = Fals
 def extract_description_metadata(df: pd.DataFrame, col: str) -> pd.DataFrame:
     """
     Extract metadata from user.description: length, email presence, official words.
-    从user.description提取元数据：长度、email存在性、官方词汇。
+    user.descriptionemail
     
     Args:
         df: DataFrame
@@ -553,7 +553,7 @@ def extract_location_metadata(df: pd.DataFrame, col: str, is_train: bool,
                              transformers: Dict, feature_name: str) -> Tuple[pd.DataFrame, Dict]:
     """
     Extract metadata from user.location: has_location flag, country/city extraction.
-    从user.location提取元数据：has_location标志、国家/城市提取。
+    user.locationhas_location/
     
     Args:
         df: DataFrame
@@ -601,7 +601,7 @@ def target_encoding_cv(df: pd.DataFrame, col: str, y: pd.Series, n_splits: int =
                        transformers: Dict = None, feature_name: str = None) -> Tuple[pd.DataFrame, Dict]:
     """
     Apply target encoding with cross-validation to avoid overfitting.
-    使用交叉验证进行目标编码以避免过拟合。
+    
     
     Args:
         df: DataFrame
@@ -681,7 +681,7 @@ def engineer_features(
 ) -> Tuple[pd.DataFrame, Dict]:
     """
     Engineer features according to the optimized feature processing plan.
-    根据优化后的特征处理计划进行特征工程。
+    
     
     Args:
         df: Input DataFrame (flattened JSON)
@@ -1314,7 +1314,7 @@ def engineer_features(
 
 def extract_client_features_from_source(df: pd.DataFrame, col: str) -> pd.DataFrame:
     """
-    从source字段提取客户端特征：苹果、安卓、桌面、App/Web
+    sourceApp/Web
     Extract client features from source field: Apple, Android, Desktop, App/Web
     
     Args:
@@ -1396,7 +1396,7 @@ def extract_client_features_from_source(df: pd.DataFrame, col: str) -> pd.DataFr
 
 def check_default_avatar(df: pd.DataFrame, col: str) -> pd.DataFrame:
     """
-    检查是否是默认头像
+    
     Check if profile image is default avatar
     
     Args:
@@ -1433,7 +1433,7 @@ def check_default_avatar(df: pd.DataFrame, col: str) -> pd.DataFrame:
 
 def check_default_background(df: pd.DataFrame, col: str) -> pd.DataFrame:
     """
-    检查是否是默认背景
+    
     Check if background image is default
     
     Args:

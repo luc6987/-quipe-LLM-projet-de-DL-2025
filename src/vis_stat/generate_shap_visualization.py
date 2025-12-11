@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 Standalone SHAP Visualization Generator
-独立的SHAP可视化生成脚本
+SHAP
 
 This script loads a saved XGBoost model and generates comprehensive SHAP visualizations.
-此脚本加载已保存的XGBoost模型并生成全面的SHAP可视化。
+XGBoostSHAP
 
 Usage:
     python generate_shap_visualization.py --model-path output/models/xgboost_model_latest.pkl
@@ -68,7 +68,7 @@ from src.utils.paths import (
 def load_model_and_metadata(model_path: str) -> tuple:
     """
     Load XGBoost model and its metadata.
-    加载XGBoost模型及其元数据。
+    XGBoost
     
     Args:
         model_path: Path to the saved model (.pkl file)
@@ -114,7 +114,7 @@ def prepare_data_for_shap(
 ) -> tuple:
     """
     Prepare data for SHAP analysis.
-    准备用于SHAP分析的数据。
+    SHAP
     
     Args:
         data_file: Path to data file (JSONL format)

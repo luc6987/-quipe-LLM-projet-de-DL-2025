@@ -1,9 +1,9 @@
 """
 Library Builder Module
-构建特征库模块 (Hashtags/Mentions)
+ (Hashtags/Mentions)
 
 Scans raw data to build frequency-based dictionaries for hashtags and user mentions.
-扫描原始数据以建立基于频率的 Hashtag 和 @ 提及字典。
+ Hashtag  @ 
 
 Outputs:
 - hashtag_library.json

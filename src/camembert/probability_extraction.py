@@ -1,11 +1,11 @@
 """
 Probability Feature Extraction Module
-概率特征提取模块
+
 
 Extracts probability features from fine-tuned CamemBERT model.
 """
 
-# 从统一导入模块导入所有库
+# 
 from .._imports import (
     np, pd, Path, Dict, Tuple, Optional, logging,
     TORCH_AVAILABLE, TRANSFORMERS_AVAILABLE, torch,
@@ -24,7 +24,7 @@ from ..preprocessing.camembert_preprocessing import (
 def load_finetuned_model(model_path: Path) -> Tuple:
     """
     Load fine-tuned CamemBERT model.
-    加载微调后的 CamemBERT 模型。
+     CamemBERT 
     
     Args:
         model_path: Path to fine-tuned model directory
@@ -66,7 +66,7 @@ def extract_probability_features(
 ) -> np.ndarray:
     """
     Extract probability features from fine-tuned model.
-    从微调后的模型提取概率特征。
+    
     
     Args:
         texts: Series of text strings
@@ -150,7 +150,7 @@ def process_probability_features(
 ) -> Tuple[pd.DataFrame, Dict]:
     """
     Process texts to extract probability features from fine-tuned model.
-    处理文本以从微调后的模型提取概率特征。
+    
     
     Args:
         df: Input DataFrame

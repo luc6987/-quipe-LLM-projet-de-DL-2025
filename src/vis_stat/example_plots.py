@@ -1,6 +1,6 @@
 """
 Example script demonstrating how to use the visualization module.
-可视化模块使用示例脚本
+
 """
 
 import os

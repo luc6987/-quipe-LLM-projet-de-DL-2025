@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 Main Pipeline Script
-主流程脚本 / Script de pipeline principal / Main Pipeline Script / Haupt-Pipeline-Skript
+ / Script de pipeline principal / Main Pipeline Script / Haupt-Pipeline-Skript
 
 Complete end-to-end pipeline for Kaggle "Influencer or Observer" classification.
-完整的端到端流程，用于Kaggle "Influencer or Observer" 分类挑战 / Complete end-to-end pipeline for Kaggle "Influencer or Observer" classification challenge
+Kaggle "Influencer or Observer"  / Complete end-to-end pipeline for Kaggle "Influencer or Observer" classification challenge
 
 Workflow:
 1. GPU Detection
@@ -30,7 +30,7 @@ import json
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-# 添加 /Data 目录中的包路径（如果存在）
+#  /Data 
 # Add /Data directory package paths (if they exist)
 if os.path.exists('/Data/yuguang.yao/pytorch_packages'):
     sys.path.insert(0, '/Data/yuguang.yao/pytorch_packages')
@@ -190,7 +190,7 @@ def main():
     logger.info("-" * 60)
     
     if args.kaggle_max:
-        # Kaggle-max 模式：使用与 baseline 相同的加载与展开逻辑
+        # Kaggle-max  baseline 
         logger.info(f"Loading training data via src.utils.data_processing: {args.train_file}")
         train_df = dp.load_data(args.train_file, clean_text=True)
         logger.info(f"  Training data shape: {train_df.shape}")
@@ -205,7 +205,7 @@ def main():
         else:
             raise ValueError("Training data must contain 'label' column")
     else:
-        # 严格模式：使用本地 JSONL loader
+        #  JSONL loader
         logger.info(f"Loading training data: {args.train_file}")
         train_df = load_jsonl(args.train_file)
         logger.info(f"  Training data shape: {train_df.shape}")
@@ -230,7 +230,7 @@ def main():
             raise ValueError("Test data must contain 'challenge_id' column")
     
     # Extract user IDs for GroupKFold BEFORE feature engineering removes user columns
-    # 在特征工程删除用户字段之前先提取用户ID，用于 GroupKFold，避免退化为按样本索引分组
+    # ID GroupKFold
     train_groups = extract_user_id(train_df)
     
     # ========== Step 3: CamemBERT Fine-tuning (if enabled) ==========
@@ -359,7 +359,7 @@ def main():
     logger.info("-" * 60)
     
     if args.kaggle_max:
-        # Kaggle-max 模式：完全复用 baseline 的特征工程与列对齐逻辑
+        # Kaggle-max  baseline 
         logger.warning(
             "  Kaggle-max mode enabled: using src.utils.data_processing engineer_features "
             "and keeping user-level IDs/names as categorical features for higher LB score "
@@ -479,7 +479,7 @@ def main():
     logger.info("\n[Step 5] Extract User IDs for GroupKFold")
     logger.info("-" * 60)
     
-    # train_groups 已在特征工程之前从原始 train_df 中提取，确保真正按用户分组
+    # train_groups  train_df 
     logger.info(f"  Training: {train_groups.nunique()} unique users")
     
     # ========== Step 6: Hyperparameter Optimization ==========
@@ -520,7 +520,7 @@ def main():
         
         # Use default parameters
         if args.kaggle_max:
-            # Kaggle-max 模式：尽量对齐 xgboost_baseline 的默认参数（不使用 scale_pos_weight）
+            # Kaggle-max  xgboost_baseline  scale_pos_weight
             best_params = {
                 'objective': 'binary:logistic',
                 'eval_metric': 'logloss',
@@ -539,7 +539,7 @@ def main():
             best_params.update(gpu_params)
             mean_best_iterations = 200
         else:
-            # 严格模式：保留原有带 scale_pos_weight 的设置
+            #  scale_pos_weight 
             negative_count = np.sum(y_train == 0)
             positive_count = np.sum(y_train == 1)
             scale_pos_weight = negative_count / positive_count if positive_count > 0 else 1.127
@@ -802,7 +802,7 @@ def main():
     logger.info("-" * 60)
     
     if not args.kaggle_max:
-        # 严格模式：保持原有的 NaN 填充逻辑，避免训练/推理缺失模式不一致
+        #  NaN /
         # Handle missing values (XGBoost can handle NaN, but ensure consistency)
         # Fill NaN with median for numeric columns (only if column has valid values)
         for col in X_test.columns:

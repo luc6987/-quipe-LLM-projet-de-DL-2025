@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """
 Text Classification CV Runner
-文本五折交叉验证 + Optuna 超参脚本
+ + Optuna 
 
 Generates reliable CV metrics for the DeBERTa text model and optionally runs a
 lightweight Optuna sweep before full cross-validation.

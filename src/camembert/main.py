@@ -1,6 +1,6 @@
 """
 CamemBERT Pipeline Main Entry Point
-CamemBERT 管道主入口点
+CamemBERT 
 
 Command-line interface for running the complete CamemBERT embedding pipeline.
 """

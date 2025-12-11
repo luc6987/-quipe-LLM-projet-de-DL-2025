@@ -1,15 +1,15 @@
 """
 Text Embedding Module
-文本嵌入模块 / Module d'embedding de texte / Text Embedding Module / Text-Embedding-Modul
+ / Module d'embedding de texte / Text Embedding Module / Text-Embedding-Modul
 
 Extracts DeBERTa embeddings and applies PCA for dimensionality reduction.
-提取DeBERTa嵌入并应用PCA进行降维。
+DeBERTaPCA
 """
 
 import numpy as np
 import pandas as pd
 from typing import Dict, Tuple, Optional
-# 从统一导入模块导入 PCA
+#  PCA
 from src._imports import sklearn_PCA as PCA
 import logging
 import os
@@ -25,7 +25,7 @@ from src._imports import (
 def load_deberta_model(model_name: str = "microsoft/deberta-v3-base"):
     """
     Load DeBERTa model and tokenizer.
-    加载DeBERTa模型和分词器。
+    DeBERTa
     
     Args:
         model_name: Name of the model to load (default: microsoft/deberta-v3-base)
@@ -62,7 +62,7 @@ def extract_deberta_embeddings(
 ) -> np.ndarray:
     """
     Extract DeBERTa embeddings from text series.
-    从文本序列提取DeBERTa嵌入（最后一层的[CLS] token）。
+    DeBERTa[CLS] token
     
     Args:
         texts: Series of text strings
@@ -122,7 +122,7 @@ def apply_pca_reduction(
 ) -> Tuple[np.ndarray, Dict]:
     """
     Apply PCA for dimensionality reduction.
-    应用PCA进行降维。
+    PCA
     
     Args:
         embeddings: Input embeddings (n_samples, 768)
@@ -171,7 +171,7 @@ def process_text_embeddings(
 ) -> Tuple[pd.DataFrame, Dict]:
     """
     Process text columns to extract DeBERTa embeddings and apply PCA.
-    处理文本列以提取DeBERTa嵌入并应用PCA。
+    DeBERTaPCA
     
     Args:
         df: Input DataFrame

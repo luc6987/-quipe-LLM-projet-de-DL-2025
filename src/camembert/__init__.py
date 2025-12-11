@@ -1,13 +1,13 @@
 """
 CamemBERT Embedding Module
-CamemBERT 嵌入模块
+CamemBERT 
 
 A comprehensive module for CamemBERT-based text embedding extraction with advanced preprocessing,
 style feature extraction, URL classification, and PCA dimensionality reduction.
 """
 
 # ============================================================================
-# 从统一导入模块获取 PyTorch 和 transformers
+#  PyTorch  transformers
 # ============================================================================
 from .._imports import (
     TORCH_AVAILABLE,
@@ -19,7 +19,7 @@ from .._imports import (
 )
 
 # ============================================================================
-# 导入子模块（现在它们可以使用上面已导入的 PyTorch 对象）
+#  PyTorch 
 # ============================================================================
 
 from ..preprocessing.camembert_preprocessing import (

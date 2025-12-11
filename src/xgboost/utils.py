@@ -1,9 +1,9 @@
 """
 Utility Functions Module
-工具函数模块 / Module de fonctions utilitaires / Utility Functions Module / Hilfsfunktionen-Modul
+ / Module de fonctions utilitaires / Utility Functions Module / Hilfsfunktionen-Modul
 
 Provides essential utility functions for data loading, GPU detection, and file operations.
-提供数据加载、GPU检测和文件操作的基础工具函数。
+GPU
 """
 
 import json
@@ -15,7 +15,7 @@ from typing import Tuple, Dict, Any, Optional
 import pandas as pd
 import numpy as np
 
-# 添加 /Data 目录中的包路径（如果存在）
+#  /Data 
 # Add /Data directory package paths (if they exist)
 if os.path.exists('/Data/yuguang.yao/pytorch_packages'):
     sys.path.insert(0, '/Data/yuguang.yao/pytorch_packages')
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 def detect_gpu_for_xgboost() -> Tuple[bool, str, Dict[str, Any]]:
     """
     Detect GPU availability for XGBoost and return appropriate parameters.
-    检测XGBoost的GPU可用性并返回相应参数。
+    XGBoostGPU
     Détecte la disponibilité GPU pour XGBoost et retourne les paramètres appropriés.
     Erkennt GPU-Verfügbarkeit für XGBoost und gibt entsprechende Parameter zurück.
     
@@ -160,7 +160,7 @@ def detect_gpu_for_xgboost() -> Tuple[bool, str, Dict[str, Any]]:
 def load_jsonl(file_path: str) -> pd.DataFrame:
     """
     Load and parse JSONL (JSON Lines) file into a pandas DataFrame.
-    加载并解析JSONL文件为pandas DataFrame。
+    JSONLpandas DataFrame
     
     Args:
         file_path: Path to the JSONL file
@@ -220,10 +220,10 @@ def load_jsonl(file_path: str) -> pd.DataFrame:
 def extract_user_id(df: pd.DataFrame) -> pd.Series:
     """
     Extract user ID from DataFrame for GroupKFold grouping.
-    从DataFrame中提取用户ID用于GroupKFold分组。
+    DataFrameIDGroupKFold
     
     Strategy: Try multiple methods to extract unique user identifier.
-    策略：尝试多种方法提取唯一用户标识符。
+    
     
     Args:
         df: DataFrame with user information
@@ -265,7 +265,7 @@ def extract_user_id(df: pd.DataFrame) -> pd.Series:
 def save_submission(predictions: np.ndarray, ids: pd.Series, output_path: str) -> None:
     """
     Save predictions to CSV file in submission format.
-    将预测结果保存为CSV提交文件。
+    CSV
     
     Args:
         predictions: Array of predictions (0 or 1)
@@ -300,7 +300,7 @@ def save_submission(predictions: np.ndarray, ids: pd.Series, output_path: str) -
 def ensure_dir(file_path: str) -> None:
     """
     Ensure the directory for a file path exists, create if necessary.
-    确保文件路径的目录存在，如不存在则创建。
+    
     
     Args:
         file_path: File path (directory will be extracted)
@@ -314,7 +314,7 @@ def ensure_dir(file_path: str) -> None:
 def get_default_params() -> Dict[str, Any]:
     """
     Get default XGBoost parameters.
-    获取XGBoost默认参数。
+    XGBoost
     
     Returns:
         dict: Default parameters
@@ -341,7 +341,7 @@ def get_default_params() -> Dict[str, Any]:
 def train_single_model(X_train: Any, y_train: Any, X_val: Any = None, y_val: Any = None, params: Optional[Dict[str, Any]] = None) -> Any:
     """
     Train a single XGBoost model.
-    训练单个XGBoost模型。
+    XGBoost
     
     Args:
         X_train: Training features

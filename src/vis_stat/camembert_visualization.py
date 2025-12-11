@@ -1,6 +1,6 @@
 """
 CamemBERT Visualization Module
-CamemBERT 可视化模块
+CamemBERT 
 
 Provides visualization functions for training curves, embedding quality, feature importance,
 confusion matrices, and training reports.
@@ -34,7 +34,7 @@ def plot_training_curves(
 ) -> None:
     """
     Plot training curves for loss and accuracy.
-    绘制训练曲线（loss 和准确率）。
+    loss 
     
     Args:
         train_losses: Training loss per epoch
@@ -103,7 +103,7 @@ def plot_embedding_quality(
 ) -> None:
     """
     Visualize embedding quality using dimensionality reduction.
-    使用降维可视化嵌入质量。
+    
     
     Args:
         embeddings: Embedding matrix (n_samples, n_features)
@@ -202,7 +202,7 @@ def plot_feature_importance(
 ) -> None:
     """
     Plot feature importance.
-    绘制特征重要性。
+    
     
     Args:
         feature_importance: Dictionary or Series of feature importance scores
@@ -257,7 +257,7 @@ def plot_confusion_matrix(
 ) -> None:
     """
     Plot confusion matrix.
-    绘制混淆矩阵。
+    
     
     Args:
         y_true: True labels
@@ -323,7 +323,7 @@ def save_training_report(
 ) -> None:
     """
     Save training report with scores and metadata.
-    保存训练报告（包含分数和元数据）。
+    
     
     Args:
         output_dir: Directory to save the report

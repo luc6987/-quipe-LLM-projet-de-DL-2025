@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 CamemBERT Fine-tuning CLI Script
-CamemBERT 微调命令行脚本
+CamemBERT 
 
 Standalone script to fine-tune CamemBERT and save parameters for later use.
-独立脚本用于微调 CamemBERT 并保存参数供后续使用。
+ CamemBERT 
 """
 
 import argparse
@@ -38,7 +38,7 @@ def save_finetuning_params(
 ) -> None:
     """
     Save fine-tuning parameters to JSON file.
-    保存微调参数到 JSON 文件。
+     JSON 
     
     Args:
         params: Dictionary of fine-tuning parameters
@@ -59,7 +59,7 @@ def save_finetuning_params(
 def load_finetuning_params(params_path: Path) -> dict:
     """
     Load fine-tuning parameters from JSON file.
-    从 JSON 文件加载微调参数。
+     JSON 
     
     Args:
         params_path: Path to parameters JSON file

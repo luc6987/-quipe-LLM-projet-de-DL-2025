@@ -1,9 +1,9 @@
 """
 SHAP Analysis Module
-SHAP分析模块 / Module d'analyse SHAP / SHAP Analysis Module / SHAP-Analysemodul
+SHAP / Module d'analyse SHAP / SHAP Analysis Module / SHAP-Analysemodul
 
 Implements Phase 4: Feature Interpretability using SHAP (SHapley Additive exPlanations).
-实现第四阶段：使用SHAP进行特征可解释性分析 / Implements Phase 4: Feature Interpretability using SHAP (SHapley Additive exPlanations)
+SHAP / Implements Phase 4: Feature Interpretability using SHAP (SHapley Additive exPlanations)
 
 SHAP Values:
 - Based on Shapley values from cooperative game theory
@@ -104,7 +104,7 @@ def analyze_with_shap(model: Any, X_val: pd.DataFrame, feature_names: Optional[L
                       max_error_force_plots: int = 10) -> Dict[str, Any]:
     """
     Perform comprehensive SHAP analysis for feature interpretability.
-    执行全面的SHAP分析以进行特征可解释性分析。
+    SHAP
     
     Generates:
     1. SHAP summary plot (beeswarm plot) - shows feature importance and impact
@@ -275,7 +275,7 @@ def analyze_with_shap(model: Any, X_val: pd.DataFrame, feature_names: Optional[L
             
             # 2. Bar Plot (Feature Importance)
             # Bar plot shows the mean absolute SHAP value for each feature
-            # 条形图显示每个特征的平均绝对SHAP值（特征重要性排序）
+            # SHAP
             logger.info("  Generating SHAP bar plot...")
             bar_plot_path = os.path.join(output_dir, 'shap_bar_plot.png')
             try:
@@ -377,7 +377,7 @@ def analyze_with_shap(model: Any, X_val: pd.DataFrame, feature_names: Optional[L
             
             # 4. Force Plot (Individual Sample Feature Contributions)
             # Force plot shows how each feature value pushes the prediction away from the base value
-            # 力图显示每个特征值如何将预测值从基准值推离（红色=增加预测值，蓝色=减少预测值）
+            # ==
             # True force plot style: horizontal cumulative bars showing base -> features -> prediction
             if generate_force:
                 logger.info("  Generating force plots...")
@@ -590,14 +590,14 @@ def analyze_with_shap(model: Any, X_val: pd.DataFrame, feature_names: Optional[L
             # - Trend: shows if feature has linear or non-linear relationship with output
             # - Clusters: groups of samples with similar behavior
             # 
-            # 依赖图显示单个特征如何影响模型输出
-            # X轴：特征值，Y轴：该特征的SHAP值
-            # 颜色：另一个特征的值（显示交互作用）
             # 
-            # 如何解读：
-            # - 垂直分布：表示交互效应（如果在相同x值处颜色垂直变化）
-            # - 趋势：显示特征与输出是线性还是非线性关系
-            # - 聚类：具有相似行为的样本组
+            # XYSHAP
+            # 
+            # 
+            # 
+            # - x
+            # - 
+            # - 
             if generate_dependence and num_dependence_features > 0:
                 logger.info(f"  Generating dependence plots for top {num_dependence_features} features...")
                 top_features = feature_importance.head(num_dependence_features)['feature'].tolist()
@@ -743,15 +743,15 @@ def analyze_with_shap(model: Any, X_val: pd.DataFrame, feature_names: Optional[L
             # - If color varies vertically at same x-value, there's an interaction
             # - Strong interaction: SHAP value depends on both features together
             # 
-            # 交互依赖性图显示两个特征如何相互交互
-            # 它可视化两个特征对模型输出的联合效应
             # 
-            # 如何解读：
-            # - X轴：主要特征值
-            # - Y轴：主要特征的SHAP值
-            # - 颜色：次要特征值（显示交互效应）
-            # - 如果在相同x值处颜色垂直变化，则存在交互
-            # - 强交互：SHAP值同时依赖于两个特征
+            # 
+            # 
+            # 
+            # - X
+            # - YSHAP
+            # - 
+            # - x
+            # - SHAP
             if generate_interaction_dependence and num_interaction_dependence_features > 0:
                 logger.info(f"  Generating interaction dependence plots for top {num_interaction_dependence_features} features...")
                 top_features = feature_importance.head(num_interaction_dependence_features)['feature'].tolist()
@@ -923,11 +923,11 @@ def analyze_with_shap(model: Any, X_val: pd.DataFrame, feature_names: Optional[L
             # The interaction index matrix is symmetric: I(i,j) = I(j,i)
             # Higher values indicate stronger interactions between features
             # 
-            # Shapley交互指数量化特征对之间的交互强度
-            # 它计算为两个特征之间的平均绝对交互值
+            # Shapley
             # 
-            # 交互指数矩阵是对称的：I(i,j) = I(j,i)
-            # 较高的值表示特征之间更强的交互
+            # 
+            # I(i,j) = I(j,i)
+            # 
             if generate_shapley_interaction_index and interaction_values_result is not None:
                 interaction_values = interaction_values_result  # Use stored values
                 interaction_sample_idx = interaction_sample_indices_result
@@ -1090,11 +1090,11 @@ def analyze_with_shap(model: Any, X_val: pd.DataFrame, feature_names: Optional[L
             # Use case: If clustering reveals clear subgroups (e.g., old users vs new users),
             # consider training separate models for each subgroup and ensembling them
             # 
-            # SHAP聚类识别具有不同特征模式的异质性子群体
-            # 这有助于发现样本被分成具有不同驱动特征的明显组别
+            # SHAP
             # 
-            # 应用场景：如果聚类显示明显的子组（例如，老用户 vs 新用户），
-            # 考虑为每个子组训练单独的模型并集成它们
+            # 
+            #  vs 
+            # 
             if generate_shap_clustering:
                 logger.info("  Performing SHAP-based clustering analysis...")
                 try:
@@ -1380,7 +1380,7 @@ def _generate_force_plot_for_sample(sample_idx: int, shap_values: np.ndarray, X_
                                     max_display: int = 20) -> bool:
     """
     Generate force plot for a single sample.
-    为单个样本生成力图。
+    
     
     Args:
         sample_idx: Index of the sample
@@ -1524,7 +1524,7 @@ def analyze_misclassified_samples(model: Any, X: pd.DataFrame, y_true: np.ndarra
                                  max_display: int = 20) -> Dict[str, Any]:
     """
     Analyze misclassified samples using SHAP values.
-    使用SHAP值分析预测错误的样本。
+    SHAP
     
     Args:
         model: Trained XGBoost model

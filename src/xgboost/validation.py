@@ -1,17 +1,17 @@
 """
 Validation Module
-验证模块 / Module de validation / Validation Module / Validierungsmodul
+ / Module de validation / Validation Module / Validierungsmodul
 
 Implements Phase 2: Robust Validation Strategy using GroupKFold.
-实现第二阶段：使用GroupKFold的稳健验证策略。
+GroupKFold
 
 Critical: MUST use GroupKFold to prevent data leakage.
-关键：必须使用GroupKFold防止数据泄露。
-Data Leakage / 数据泄露 / Fuite de données / Datenleck occurs when tweets from
+GroupKFold
+Data Leakage /  / Fuite de données / Datenleck occurs when tweets from
 the same user are split between train and validation sets.
 """
 
-# 从统一导入模块导入所有库
+# 
 from typing import Callable, Optional
 
 from src._imports import (
@@ -37,17 +37,17 @@ def group_kfold_cv(
 ) -> Tuple[List[float], List[int]]:
     """
     Perform GroupKFold cross-validation to prevent data leakage.
-    执行GroupKFold交叉验证以防止数据泄露。
+    GroupKFold
     
     Why GroupKFold?
     - Labels are user-level, but data is tweet-level
     - Same user's tweets MUST be in same fold (train or validation)
     - Prevents leakage: model can't see same user's tweets in both sets
     
-    GroupKFold原理：
-    - 标签是用户级别的，但数据是推文级别的
-    - 同一用户的所有推文必须在同一折中（训练集或验证集）
-    - 防止泄露：模型不能在训练集和验证集中看到同一用户的推文
+    GroupKFold
+    - 
+    - 
+    - 
     
     Args:
         X: Feature DataFrame

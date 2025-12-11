@@ -1,11 +1,11 @@
 """
 CamemBERT Embedding Extraction Module
-CamemBERT 嵌入提取模块
+CamemBERT 
 
 Handles CamemBERT model loading, embedding extraction, and PCA dimensionality reduction.
 """
 
-# 从统一导入模块导入所有库
+# 
 from .._imports import (
     np, pd, Path, Dict, Tuple, Optional, logging,
     TORCH_AVAILABLE, TRANSFORMERS_AVAILABLE, torch,
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 def load_camembert_model(model_name: str = "camembert-base"):
     """
     Load CamemBERT model and tokenizer.
-    加载CamemBERT模型和分词器。
+    CamemBERT
     
     Args:
         model_name: Name of the model to load (default: camembert-base)
@@ -70,7 +70,7 @@ def extract_camembert_embeddings(
 ) -> np.ndarray:
     """
     Extract CamemBERT embeddings from text series.
-    从文本序列提取CamemBERT嵌入（倒数第二层的[CLS] token）。
+    CamemBERT[CLS] token
     
     Args:
         texts: Series of text strings
@@ -110,8 +110,8 @@ def extract_camembert_embeddings(
             # Get embeddings (no gradient computation)
             with torch.no_grad():
                 outputs = model(**encoded, output_hidden_states=True)
-                # Extract [CLS] token embedding from second-to-last hidden state (倒数第二层)
-                # outputs.hidden_states 是一个元组，[-2] 是倒数第二层，[-1] 是最后一层
+                # Extract [CLS] token embedding from second-to-last hidden state ()
+                # outputs.hidden_states [-2] [-1] 
                 batch_embeddings = outputs.hidden_states[-2][:, 0, :].cpu().numpy()
             
             embeddings.append(batch_embeddings)
@@ -155,7 +155,7 @@ def apply_pca_reduction(
 ) -> Tuple[np.ndarray, Dict]:
     """
     Apply PCA for dimensionality reduction.
-    应用PCA进行降维。
+    PCA
     
     Args:
         embeddings: Input embeddings (n_samples, 768)
@@ -208,7 +208,7 @@ def process_camembert_embeddings(
 ) -> Tuple[pd.DataFrame, Dict]:
     """
     Process text to extract CamemBERT embeddings with preprocessing and PCA.
-    处理文本以提取CamemBERT嵌入，包括预处理和PCA。
+    CamemBERTPCA
     
     This is the main entry point that integrates all preprocessing steps:
     1. Extract and fuse text fields
@@ -337,7 +337,7 @@ def process_finetuned_probability_features(
 ) -> Tuple[pd.DataFrame, Dict]:
     """
     Process texts to extract probability features from fine-tuned model and apply PCA.
-    处理文本以从微调后的模型提取概率特征并应用PCA。
+    PCA
     
     This function integrates:
     1. Probability extraction from fine-tuned model

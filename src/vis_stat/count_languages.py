@@ -1,6 +1,6 @@
 """
 Language Statistics for Text Features
-统计文本特征的语言分布
+
 
 This script analyzes language distribution in text fields (text, extended_tweet.full_text, quoted_status.text)
 """

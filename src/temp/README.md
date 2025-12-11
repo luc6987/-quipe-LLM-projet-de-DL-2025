@@ -1,5 +1,5 @@
 # Distribution Shift Detection Module
-# 分布偏移检测模块
+# 
 
 This module detects distribution shift between training and test sets by training a classifier to distinguish between them.
 

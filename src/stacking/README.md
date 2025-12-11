@@ -1,70 +1,70 @@
 # Stacking Ensemble Module
 
-## 概述 / Overview
+##  / Overview
 
-这个模块实现了三个boosting模型的堆叠集成：LightGBM + XGBoost + CatBoost。
+boostingLightGBM + XGBoost + CatBoost
 
 This module implements stacking ensemble for three boosting models: LightGBM + XGBoost + CatBoost.
 
-## 使用方法 / Usage
+##  / Usage
 
-### 方法1: 通过main.py和setup.yml控制
+### 1: main.pysetup.yml
 
-1. 在 `setup.yml` 中启用stacking模式：
+1.  `setup.yml` stacking
 ```yaml
 stacking:
-  enabled: true  # 设置为true启用stacking
+  enabled: true  # truestacking
   n_folds: 5
   text_components: 128
 ```
 
-2. 运行主脚本：
+2. 
 ```bash
 python src/main.py
 ```
 
-### 方法2: 直接运行stacking模块
+### 2: stacking
 
 ```bash
 python src/stacking/main.py
 ```
 
-或者：
+
 
 ```bash
 python -m src.stacking.main
 ```
 
-## 配置选项 / Configuration
+##  / Configuration
 
-在 `setup.yml` 的 `stacking` 部分可以配置：
+ `setup.yml`  `stacking` 
 
-- `enabled`: 是否启用stacking模式（默认: false）
-- `n_folds`: 交叉验证折数（默认: 5）
-- `text_components`: 文本嵌入PCA降维后的维度（默认: 128，当前未使用）
+- `enabled`: stacking: false
+- `n_folds`: : 5
+- `text_components`: PCA: 128
 
-## 输出文件 / Output Files
+##  / Output Files
 
-所有输出文件保存在 `output/stacking/` 目录：
+ `output/stacking/` 
 
-- `correlations_oof.csv`: OOF预测的相关性矩阵
-- `correlations_test.csv`: 测试集预测的相关性矩阵
-- `oof_predictions.npz`: 所有模型的OOF logits
-- `test_predictions.npz`: 所有模型的测试集logits
-- `meta_model_info.json`: 元模型信息和性能指标
+- `correlations_oof.csv`: OOF
+- `correlations_test.csv`: 
+- `oof_predictions.npz`: OOF logits
+- `test_predictions.npz`: logits
+- `meta_model_info.json`: 
 
-提交文件保存在 `output/submissions/submission_stacking_boosting.csv`
+ `output/submissions/submission_stacking_boosting.csv`
 
-## 工作流程 / Workflow
+##  / Workflow
 
-1. **生成OOF预测**: 对每个模型（LightGBM, XGBoost, CatBoost）进行5折交叉验证，生成OOF logits
-2. **计算相关性**: 计算模型预测之间的Pearson相关系数
-3. **训练元模型**: 使用三个模型的OOF logits作为特征，训练Logistic Regression元模型
-4. **生成预测**: 使用元模型对测试集进行预测并生成提交文件
+1. **OOF**: LightGBM, XGBoost, CatBoost5OOF logits
+2. ****: Pearson
+3. ****: OOF logitsLogistic Regression
+4. ****: 
 
-## 注意事项 / Notes
+##  / Notes
 
-- Stacking模式会训练三个完整的模型，因此运行时间较长
-- 确保在 `setup.yml` 中正确配置了各个模型的参数
-- GPU加速会自动检测和使用（如果可用）
+- Stacking
+-  `setup.yml` 
+- GPU
 

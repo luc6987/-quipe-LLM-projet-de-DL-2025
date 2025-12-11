@@ -1,12 +1,12 @@
 """
 CamemBERT Fine-tuning Module
-CamemBERT 微调模块
+CamemBERT 
 
 Handles fine-tuning of CamemBERT with classification head, including training visualization
 and overfitting/underfitting detection.
 """
 
-# 从统一导入模块导入所有库
+# 
 from .._imports import (
     os, json, np, pd, Path, Dict, Tuple, Optional, List, datetime, logging,
     TORCH_AVAILABLE, TRANSFORMERS_AVAILABLE, torch,
@@ -59,7 +59,7 @@ class FineTuningCallback:
 def create_finetuning_model(model_name: str = "camembert-base", num_labels: int = 2):
     """
     Create CamemBERT model with classification head.
-    创建带分类头的 CamemBERT 模型。
+     CamemBERT 
     
     Args:
         model_name: Pre-trained model name
@@ -92,7 +92,7 @@ def prepare_finetuning_data(
 ) -> Tuple['torch.utils.data.Dataset', 'torch.utils.data.Dataset']:
     """
     Prepare data for fine-tuning.
-    准备微调数据。
+    
     
     Args:
         df: DataFrame with text and label columns
@@ -186,7 +186,7 @@ def detect_overfitting(
 ) -> Dict[str, any]:
     """
     Detect overfitting and underfitting patterns.
-    检测过拟合和欠拟合模式。
+    
     
     Args:
         train_losses: Training loss per epoch
@@ -266,7 +266,7 @@ def _save_monitoring_plots(
 ) -> None:
     """
     Save monitoring plots similar to CatBoost/LightGBM.
-    保存监控图表（与CatBoost/LightGBM类似）。
+    CatBoost/LightGBM
     
     Generates:
     - Training curves (loss, AUC, accuracy)
@@ -414,7 +414,7 @@ def plot_finetuning_curves(
 ) -> None:
     """
     Plot fine-tuning curves with overfitting detection.
-    绘制微调曲线，包含过拟合检测。
+    
     
     Args:
         train_losses: Training loss per epoch
@@ -517,7 +517,7 @@ def train_camembert_classifier(
 ) -> Tuple:
     """
     Fine-tune CamemBERT classifier with visualization.
-    微调 CamemBERT 分类器，包含可视化。
+     CamemBERT 
     
     Args:
         df: DataFrame with text and label columns
@@ -810,7 +810,7 @@ def save_finetuned_model(
 ) -> None:
     """
     Save fine-tuned model and tokenizer.
-    保存微调后的模型和分词器。
+    
     
     Args:
         model: Fine-tuned model

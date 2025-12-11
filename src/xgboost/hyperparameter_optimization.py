@@ -1,11 +1,11 @@
 """
 Hyperparameter Optimization Module
-超参数优化模块 / Module d'optimisation des hyperparamètres / Hyperparameter Optimization Module / Hyperparameter-Optimierungsmodul
+ / Module d'optimisation des hyperparamètres / Hyperparameter Optimization Module / Hyperparameter-Optimierungsmodul
 
 Implements Phase 3: Bayesian Optimization using Optuna with GPU acceleration.
-实现第三阶段：使用Optuna进行贝叶斯优化（GPU加速） / Implements Phase 3: Bayesian Optimization using Optuna with GPU acceleration
+OptunaGPU / Implements Phase 3: Bayesian Optimization using Optuna with GPU acceleration
 
-Bayesian Optimization / 贝叶斯优化 / Optimisation bayésienne / Bayes'sche Optimierung:
+Bayesian Optimization /  / Optimisation bayésienne / Bayes'sche Optimierung:
 - Uses TPE (Tree-structured Parzen Estimator) algorithm
 - Builds probabilistic model of objective function
 - Updates posterior probability distribution after each trial
@@ -21,7 +21,7 @@ import os
 if 'PYTHONIOENCODING' not in os.environ:
     os.environ['PYTHONIOENCODING'] = 'utf-8'
 
-# 从统一导入模块导入所有库
+# 
 from src._imports import (
     np, pd, xgb, Dict, Any, Tuple, Optional, logging,
     json, Path,
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 def _get_cache_dir() -> Path:
     """
-    Get cache directory path. / 获取缓存目录路径
+    Get cache directory path. / 
     
     Returns:
         Path to Optuna cache directory / Path to Optuna cache directory
@@ -54,7 +54,7 @@ def _get_cache_dir() -> Path:
 def _generate_study_id(use_kaggle_score: bool, competition: str, 
                        cv_folds: int, use_gpu: bool, cv_strategy: str = 'stratified') -> str:
     """
-    Generate unique study ID based on configuration. / 基于配置生成唯一的study ID
+    Generate unique study ID based on configuration. / study ID
     
     Args:
         use_kaggle_score: Whether using Kaggle score / Whether using Kaggle score
@@ -74,7 +74,7 @@ def _generate_study_id(use_kaggle_score: bool, competition: str,
 
 def _save_optimization_config(cache_dir: Path, study_id: str, config: Dict[str, Any]) -> None:
     """
-    Save optimization configuration to JSON file. / 保存优化配置到JSON文件
+    Save optimization configuration to JSON file. / JSON
     
     Args:
         cache_dir: Cache directory path / Cache directory path
@@ -104,7 +104,7 @@ def _save_optimization_config(cache_dir: Path, study_id: str, config: Dict[str, 
 def _load_optimization_config(cache_dir: Path, study_id: str) -> Optional[Dict[str, Any]]:
     """
     Load optimization configuration from JSON file.
-    从JSON文件加载优化配置。
+    JSON
     
     Args:
         cache_dir: Cache directory path
@@ -135,10 +135,10 @@ def optimize_hyperparameters(X_train: pd.DataFrame, y_train: pd.Series, groups: 
                              cv_strategy: str = 'stratified') -> Dict[str, Any]:
     """
     Optimize XGBoost hyperparameters using Optuna Bayesian Optimization.
-    使用Optuna贝叶斯优化优化XGBoost超参数。
+    OptunaXGBoost
     
     Can use either CV score or Kaggle submission score as optimization target.
-    可以使用CV分数或Kaggle提交分数作为优化目标。
+    CVKaggle
     
     Search Space (regularized to reduce overfitting):
     - learning_rate: log-uniform [1e-3, 0.1]
@@ -387,7 +387,7 @@ def optimize_hyperparameters(X_train: pd.DataFrame, y_train: pd.Series, groups: 
     def objective(trial: optuna.Trial) -> float:
         """
         Optuna objective function: maximize score (CV or Kaggle).
-        Optuna目标函数：最大化分数（CV或Kaggle）。
+        OptunaCVKaggle
         
         Uses TPE (Tree-structured Parzen Estimator) sampler:
         - Models p(x|good) and p(x|bad) distributions

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """
 DeBERTa Feature Extraction Fine-tuning Script
-DeBERTa 特征提取微调脚本
+DeBERTa 
 
 This script fine-tunes `microsoft/deberta-v3-base` using supervised learning (with labels)
 to extract the final-layer [CLS] representation as text embeddings for downstream XGBoost models.
@@ -175,12 +175,12 @@ class SafePEFTWrapper(nn.Module):
     before passing them to the underlying model. This prevents errors when the
     base model doesn't accept these parameters.
     
-    一个包装 PEFT 模型的包装器，在传递给底层模型之前过滤掉 'labels' 和 'label' 参数。
-    这可以防止当基础模型不接受这些参数时出现错误。
+     PEFT  'labels'  'label' 
+    
     
     This is a one-time solution that works for all PEFT models regardless of
     how they internally handle parameters.
-    这是一个一劳永逸的解决方案，适用于所有 PEFT 模型，无论它们内部如何处理参数。
+     PEFT 
     """
     def __init__(self, peft_model):
         super().__init__()
@@ -189,7 +189,7 @@ class SafePEFTWrapper(nn.Module):
         self.peft_model = peft_model
         
         # Directly set config and base_model in __init__ to avoid recursion in __getattr__
-        # 在 __init__ 中直接设置 config 和 base_model 以避免在 __getattr__ 中递归
+        #  __init__  config  base_model  __getattr__ 
         try:
             # Try to get config directly from __dict__ first
             peft_dict = peft_model.__dict__
@@ -301,7 +301,7 @@ class CLSEmbeddingExtractor(nn.Module):
             labels = label_fallback if label_fallback is not None else single_label
 
         # Create a clean kwargs dict without problematic args to ensure they never reach the encoder
-        # 创建一个干净的 kwargs 字典，不包含有问题的参数，确保它们永远不会到达 encoder
+        #  kwargs  encoder
         problematic_args = {"labels", "label", "num_items_in_batch"}
         clean_encoder_kwargs = {k: v for k, v in kwargs.items() if k not in problematic_args}
         encoder_outputs = self.encoder(

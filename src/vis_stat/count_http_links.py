@@ -1,6 +1,6 @@
 """
 Count HTTP Links in All Datasets
-统计所有数据集中的HTTP链接
+HTTP
 
 This script extracts and counts all HTTP/HTTPS links from train.jsonl and kaggle_test.jsonl.
 """

@@ -74,9 +74,9 @@ semantic:
   
   # CamemBERT模型配置 / CamemBERT Model Configuration
   camembert_model_name: "camembert-base"  # CamemBERT模型名称 / CamemBERT model name
-  camembert_max_length: 256  # CamemBERT最大序列长度 / CamemBERT maximum sequence length
+  camembert_max_length: 512  # CamemBERT最大序列长度 / CamemBERT maximum sequence length
   camembert_batch_size: 32  # CamemBERT批处理大小 / CamemBERT batch size
-  extract_style_features: false  # 是否提取文本风格特征 / Whether to extract text style features
+  extract_style_features: true  # 是否提取文本风格特征 / Whether to extract text style features
   classify_urls: true  # 是否分类和替换URL / Whether to classify and replace URLs
   
   # CamemBERT微调配置 / CamemBERT Fine-tuning Configuration
@@ -273,4 +273,3 @@ neural:
 stacking:
   enabled: true # 是否启用stacking模式 / Whether to enable stacking mode
   n_folds: 5  # 交叉验证折数 / Number of cross-validation folds
-  text_components: 32  # 文本嵌入PCA降维后的维度 / Text embedding dimension after PCA reduction

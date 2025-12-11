@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Main Script for Distribution Shift Detection
-分布偏移检测主程序
+
 
 Trains a classifier to distinguish between training and test sets
 to detect if feature engineering has caused distribution shift.

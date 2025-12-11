@@ -1,6 +1,6 @@
 """
 Generate comprehensive feature statistics report in JSON format.
-生成全面的特征统计报表（JSON格式）
+JSON
 """
 
 import os
@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 def get_top_values(series: pd.Series, top_n: int = 5) -> List[Dict[str, Any]]:
     """
     Get top N most frequent values and their counts.
-    获取出现频率最高的N个值及其计数。
+    N
     
     Returns original values (not encoded), including NaN if present.
     Optimized for performance - handles complex types efficiently.
@@ -149,7 +149,7 @@ def get_top_values(series: pd.Series, top_n: int = 5) -> List[Dict[str, Any]]:
 def get_mode(series: pd.Series) -> Optional[Any]:
     """
     Get mode (most frequent value) if it exists.
-    获取众数（如果存在）。
+    
     """
     non_null_series = series.dropna()
     if len(non_null_series) == 0:
@@ -168,7 +168,7 @@ def get_mode(series: pd.Series) -> Optional[Any]:
 def detect_feature_type(series: pd.Series) -> str:
     """
     Detect feature type: numeric, category, binary, etc.
-    检测特征类型：数值型、类别型、二元型等。
+    
     """
     dtype = series.dtype
     
@@ -193,7 +193,7 @@ def detect_feature_type(series: pd.Series) -> str:
 def get_feature_engineering_method(feature_name: str) -> Dict[str, str]:
     """
     Determine how this feature is processed in feature engineering.
-    确定该特征在特征工程中的处理方法。
+    
     
     Returns:
         Dict with 'baseline_method' and 'solution_method'
@@ -282,7 +282,7 @@ def get_feature_engineering_method(feature_name: str) -> Dict[str, str]:
 def calculate_mutual_information(series: pd.Series, target: pd.Series) -> Optional[float]:
     """
     Calculate mutual information between feature and target.
-    计算特征与目标变量的互信息。
+    
     """
     try:
         # Align series and target
@@ -322,7 +322,7 @@ def calculate_mutual_information(series: pd.Series, target: pd.Series) -> Option
 def calculate_skewness_kurtosis(series: pd.Series) -> Dict[str, Optional[float]]:
     """
     Calculate skewness and kurtosis for numeric features.
-    计算数值特征的偏度和峰度。
+    
     """
     result = {"skewness": None, "kurtosis": None}
     
@@ -345,7 +345,7 @@ def calculate_skewness_kurtosis(series: pd.Series) -> Dict[str, Optional[float]]
 def calculate_zero_inflation_rate(series: pd.Series) -> Optional[float]:
     """
     Calculate zero-inflation rate for numeric features.
-    计算数值特征的零值膨胀率。
+    
     """
     if not pd.api.types.is_numeric_dtype(series):
         return None
@@ -361,7 +361,7 @@ def calculate_zero_inflation_rate(series: pd.Series) -> Optional[float]:
 def calculate_conditional_probability_diff(series: pd.Series, target: pd.Series, value: Any) -> Optional[float]:
     """
     Calculate conditional probability difference: P(Y=1|X=x) - P(Y=1)
-    计算条件概率差异。
+    
     """
     try:
         aligned_data = pd.DataFrame({
@@ -390,7 +390,7 @@ def calculate_conditional_probability_diff(series: pd.Series, target: pd.Series,
 def calculate_id_purity(series: pd.Series, target: pd.Series, min_count: int = 5) -> Optional[Dict[str, Any]]:
     """
     Calculate ID purity (Gini impurity) for high-cardinality ID features.
-    计算ID特征的纯度（基尼不纯度）。
+    ID
     """
     try:
         aligned_data = pd.DataFrame({
@@ -439,7 +439,7 @@ def calculate_id_purity(series: pd.Series, target: pd.Series, min_count: int = 5
 def calculate_temporal_statistics(series: pd.Series, target: pd.Series) -> Optional[Dict[str, Any]]:
     """
     Calculate temporal dynamics statistics (hour distribution, weekday/weekend ratio).
-    计算时间动力学统计（小时分布、周中/周末比率）。
+    /
     """
     try:
         # Try to parse as datetime
@@ -510,7 +510,7 @@ def calculate_temporal_statistics(series: pd.Series, target: pd.Series) -> Optio
 def calculate_statistics(df: pd.DataFrame, target: Optional[pd.Series] = None) -> List[Dict[str, Any]]:
     """
     Calculate comprehensive statistics for all features.
-    计算所有特征的全面统计信息。
+    
     
     Args:
         df: Feature DataFrame
@@ -693,7 +693,7 @@ def calculate_statistics(df: pd.DataFrame, target: Optional[pd.Series] = None) -
 def main():
     """
     Main function to generate feature statistics report.
-    生成特征统计报表的主函数。
+    
     
     Generates statistics for ALL tabular features using RAW, UNPROCESSED values.
     No missing value imputation, no encoding - just original data statistics.

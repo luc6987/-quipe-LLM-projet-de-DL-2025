@@ -1,9 +1,9 @@
 """
 Path Configuration Module
-路径配置模块
+
 
 Centralized path management for cache, models, and output directories.
-集中管理缓存、模型和输出目录的路径。
+
 
 All paths are now controlled by setup.yml.
 """
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 def get_project_root() -> Path:
     """
     Get the project root directory.
-    获取项目根目录。
+    
     """
     # Start from the directory containing this file (src/utils/paths.py)
     current_dir = Path(__file__).parent.absolute()

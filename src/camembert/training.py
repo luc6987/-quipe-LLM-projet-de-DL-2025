@@ -1,6 +1,6 @@
 """
 CamemBERT Training Pipeline Module
-CamemBERT 训练管道模块
+CamemBERT 
 
 Provides training pipeline integration with XGBoost and visualization.
 """
@@ -31,7 +31,7 @@ def prepare_features_with_camembert(
 ) -> Tuple[pd.DataFrame, Dict]:
     """
     Prepare features using CamemBERT embeddings.
-    使用CamemBERT嵌入准备特征。
+    CamemBERT
     
     This is a wrapper that integrates CamemBERT processing into the feature engineering pipeline.
     
@@ -70,7 +70,7 @@ def train_with_camembert_features(
 ) -> Dict:
     """
     Train XGBoost model with CamemBERT features.
-    使用CamemBERT特征训练XGBoost模型。
+    CamemBERTXGBoost
     
     Args:
         X_train: Training features

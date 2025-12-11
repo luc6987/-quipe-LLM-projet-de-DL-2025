@@ -1,6 +1,6 @@
 """
 Text Preprocessing Module for CamemBERT
-CamemBERT 文本预处理模块
+CamemBERT 
 
 Handles text field fusion, style feature extraction, URL classification, and normalization.
 """
@@ -34,7 +34,7 @@ MULTISPACE_PATTERN = re.compile(r'\s+')
 def extract_and_fuse_text_fields(df: pd.DataFrame) -> pd.Series:
     """
     Extract and fuse text fields from tweet data.
-    提取并融合推文数据中的文本字段。
+    
     
     Strategy:
     - Priority: extended_tweet.full_text > text
@@ -95,7 +95,7 @@ def extract_and_fuse_text_fields(df: pd.DataFrame) -> pd.Series:
 def extract_text_style_features(texts: pd.Series) -> pd.DataFrame:
     """
     Extract text style features BEFORE cleaning to preserve style signals.
-    在清理前提取文本风格特征以保留风格信号。
+    
     
     Features (~25 dimensions):
     - Basic stats: text_length, word_count, avg_word_length
@@ -174,7 +174,7 @@ def classify_and_replace_urls(
 ) -> Tuple[pd.Series, pd.DataFrame]:
     """
     Classify URLs into media vs link URLs and replace with type markers.
-    将URL分类为媒体URL和链接URL，并用类型标记替换。
+    URLURLURL
     
     Classification:
     - Media URLs: From entities.media, extended_entities.media, or patterns (pic.twitter.com, pbs.twimg.com)
@@ -282,7 +282,7 @@ def classify_and_replace_urls(
 def normalize_text_for_camembert(texts: pd.Series) -> pd.Series:
     """
     Normalize text for CamemBERT with minimal cleaning (preserve style).
-    为CamemBERT规范化文本，最小化清理（保留风格）。
+    CamemBERT
     
     Cleaning steps:
     - HTML unescape
@@ -336,7 +336,7 @@ def load_preprocessed_camembert_texts(
 ) -> Optional[Dict[str, pd.Series]]:
     """
     Load preprocessed texts and labels saved during unified preprocessing.
-    从统一预处理中加载已处理的文本与标签。
+    
     """
     base = Path(preprocess_dir) if preprocess_dir else get_preprocessing_dir()
     train_text_path = base / "camembert_train_texts.pkl"

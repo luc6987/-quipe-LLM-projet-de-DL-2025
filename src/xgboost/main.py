@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Main Pipeline Script
-主流程脚本 (Refactored)
+ (Refactored)
 
 Integrates:
 1. Configuration Centralization (setup.yml)
@@ -158,7 +158,7 @@ def main():
         train_ids = pd.Series(range(len(df_train_eng))).astype(str)
 
     # Extract User IDs for GroupKFold (BEFORE feature engineering removes user columns)
-    # 在特征工程删除用户字段之前提取用户ID，用于 GroupKFold
+    # ID GroupKFold
     logger.info("  Extracting user IDs for GroupKFold...")
     try:
         user_groups = extract_user_id(df_train_raw)

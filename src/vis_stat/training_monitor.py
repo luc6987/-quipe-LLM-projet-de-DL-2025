@@ -1,9 +1,9 @@
 """
 Training Monitor Module
-训练监控模块
+
 
 Functions to visualize training progress (metrics over epochs) and model performance (Confusion Matrix, ROC, etc.).
-用于可视化训练进度（各Epoch的指标）和模型性能（混淆矩阵、ROC等）的函数。
+EpochROC
 """
 
 import matplotlib
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 def plot_training_history(evals_result: Dict, output_dir: Union[str, Path], test_metric_values: Optional[Dict[str, List[float]]] = None):
     """
     Plot training curves for all metrics in evals_result.
-    绘制 evals_result 中所有指标的训练曲线。
+     evals_result 
     
     Args:
         evals_result: Result dictionary from xgb.train / model.fit
@@ -88,7 +88,7 @@ def plot_training_history(evals_result: Dict, output_dir: Union[str, Path], test
 def plot_confusion_matrix(y_true, y_pred, output_dir: Union[str, Path]):
     """
     Plot Confusion Matrix.
-    绘制混淆矩阵。
+    
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -114,7 +114,7 @@ def plot_confusion_matrix(y_true, y_pred, output_dir: Union[str, Path]):
 def plot_roc_curve(y_true, y_pred_proba, output_dir: Union[str, Path]):
     """
     Plot ROC Curve and calculate AUC.
-    绘制 ROC 曲线并计算 AUC。
+     ROC  AUC
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -142,7 +142,7 @@ def plot_roc_curve(y_true, y_pred_proba, output_dir: Union[str, Path]):
 def plot_classification_report(y_true, y_pred, output_dir: Union[str, Path]):
     """
     Visualize Classification Report (Precision, Recall, F1) as Heatmap.
-    将分类报告可视化为热图。
+    
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

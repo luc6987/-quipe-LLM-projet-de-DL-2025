@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """
 DeBERTa Embeddings Validation Script
-DeBERTa 嵌入向量验证脚本
+DeBERTa 
 
 This script loads and validates the extracted embeddings from the fine-tuned DeBERTa model.
 It checks the format, dimensions, and can optionally display sample embeddings.

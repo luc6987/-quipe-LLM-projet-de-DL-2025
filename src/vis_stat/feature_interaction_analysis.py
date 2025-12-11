@@ -1,6 +1,6 @@
 """
 Feature Interaction Analysis with H-statistic
-基于 H-statistic 的特征交互分析模块
+ H-statistic 
 
 This module implements:
 1. H-statistic calculation for feature pairs
@@ -56,7 +56,7 @@ def load_top_features(
 ) -> List[str]:
     """
     Load top N features from feature importance CSV.
-    从特征重要性CSV文件加载Top N特征。
+    CSVTop N
     
     Args:
         feature_importance_path: Path to feature_importance.csv
@@ -114,7 +114,7 @@ def calculate_h_statistic(
 ) -> float:
     """
     Calculate H-statistic for a pair of features.
-    计算一对特征的 H-statistic。
+     H-statistic
     
     H-statistic measures the strength of interaction between two features.
     H² = Var[f_ij - f_i - f_j] / Var[f_ij]
@@ -368,7 +368,7 @@ def compute_all_pairs_h_statistic(
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Compute H-statistic for all pairs of top features.
-    计算所有Top特征对的H-statistic。
+    TopH-statistic
     
     Args:
         model: Trained model
@@ -448,7 +448,7 @@ def generate_shap_interaction_plots(
 ) -> List[str]:
     """
     Generate SHAP Dependence Plots with interaction coloring.
-    生成带交互染色的SHAP依赖图。
+    SHAP
     
     Args:
         model: Trained model
@@ -599,7 +599,7 @@ def generate_2d_pdp(
 ) -> List[str]:
     """
     Generate 2D Partial Dependence Plots for interaction pairs.
-    为交互对生成2D偏依赖图。
+    2D
     
     Args:
         model: Trained model
@@ -682,7 +682,7 @@ def create_interaction_features(
 ) -> Tuple[pd.DataFrame, List[str]]:
     """
     Create interaction features (multiplication and division) for top pairs.
-    为Top交互对创建交互特征（乘法和除法）。
+    Top
     
     Args:
         X: Feature DataFrame
@@ -742,7 +742,7 @@ def test_auc_improvement(
 ) -> Dict[str, Any]:
     """
     Test AUC improvement with interaction features.
-    测试添加交互特征后的AUC提升。
+    AUC
     
     Args:
         model_class: Model class (e.g., xgb.XGBClassifier)
@@ -820,7 +820,7 @@ def analyze_feature_interactions(
 ) -> Dict[str, Any]:
     """
     Main function to analyze feature interactions with H-statistic.
-    主函数：使用H-statistic分析特征交互。
+    H-statistic
     
     Args:
         model: Trained model

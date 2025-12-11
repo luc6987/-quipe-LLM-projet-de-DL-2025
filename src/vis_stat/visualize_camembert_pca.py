@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Visualize CamemBERT PCA Eigenvalues
-可视化 CamemBERT PCA 特征值
+ CamemBERT PCA 
 
 This script extracts and visualizes all PCA eigenvalues (explained variance) 
 from the CamemBERT embedding PCA model.

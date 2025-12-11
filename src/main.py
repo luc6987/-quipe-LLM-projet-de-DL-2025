@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 Main Pipeline Script
-主流程脚本 / Script de pipeline principal / Main Pipeline Script / Haupt-Pipeline-Skript
+ / Script de pipeline principal / Main Pipeline Script / Haupt-Pipeline-Skript
 
 Complete end-to-end pipeline for Kaggle "Influencer or Observer" classification.
-完整的端到端流程，用于Kaggle "Influencer or Observer" 分类挑战 / Complete end-to-end pipeline for Kaggle "Influencer or Observer" classification challenge
+Kaggle "Influencer or Observer"  / Complete end-to-end pipeline for Kaggle "Influencer or Observer" classification challenge
 
 Workflow:
 1. GPU Detection
@@ -79,6 +79,148 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 PREPROCESSING_FLAG = "preprocessing_complete.json"
+
+
+def _pick_metric_key(metric_dict: Dict[str, Any]) -> Optional[str]:
+    """Pick a logloss-like metric key if available, otherwise the first key."""
+    if not metric_dict:
+        return None
+    keys = list(metric_dict.keys())
+    for k in keys:
+        if "logloss" in k.lower():
+            return k
+    return keys[0]
+
+
+def _normalize_train_val_curves(evals_result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Extract train/validation logloss curves from various evals_result formats.
+    Returns dict with train, val, metric_name if found.
+    """
+    if not evals_result:
+        return None
+
+    datasets = list(evals_result.keys())
+    if not datasets:
+        return None
+
+    # Heuristics to find train/val keys across xgboost/lightgbm/catboost
+    preferred_train = ["train", "learn", "training", "validation_0", "valid_0", "validation0"]
+    preferred_val = ["validation_1", "valid_1", "validation", "val", "validation1", "test"]
+
+    train_key = next((k for k in preferred_train if k in evals_result), None)
+    val_key = next((k for k in preferred_val if k in evals_result), None)
+
+    if train_key is None:
+        train_key = datasets[0]
+    if val_key is None and len(datasets) > 1:
+        val_key = datasets[1]
+
+    metric_name = None
+    if train_key in evals_result:
+        metric_name = _pick_metric_key(evals_result[train_key])
+    if metric_name is None and val_key and val_key in evals_result:
+        metric_name = _pick_metric_key(evals_result[val_key])
+    if metric_name is None:
+        return None
+
+    train_vals = evals_result.get(train_key, {}).get(metric_name, [])
+    val_vals = evals_result.get(val_key, {}).get(metric_name, []) if val_key else []
+
+    # Ensure list of floats
+    train_vals = [float(v) for v in train_vals]
+    val_vals = [float(v) for v in val_vals]
+
+    if not train_vals and not val_vals:
+        return None
+
+    return {
+        "train": train_vals,
+        "val": val_vals,
+        "metric": metric_name,
+        "train_key": train_key,
+        "val_key": val_key,
+    }
+
+
+def _save_and_plot_boosting_summary(
+    evals_result: Dict[str, Any],
+    monitoring_base: Path,
+    report_dir: Path,
+    model_name: str,
+) -> None:
+    """
+    Persist current model's eval curves and generate a combined boosting summary plot.
+    One color per model; solid = train, dashed = val.
+    """
+    summary_dir = monitoring_base
+    summary_dir.mkdir(parents=True, exist_ok=True)
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    normalized = _normalize_train_val_curves(evals_result)
+    if normalized is None:
+        logger.warning("No train/val curves found to aggregate for %s", model_name)
+        return
+
+    # Save current model curves for later aggregation
+    model_json_path = summary_dir / f"{model_name}_evals_result.json"
+    with open(model_json_path, "w", encoding="utf-8") as f_out:
+        json.dump(normalized, f_out, indent=2)
+
+    # Load all available model curves
+    model_colors = {
+        "xgboost": "#1f77b4",
+        "lightgbm": "#ff7f0e",
+        "catboost": "#2ca02c",
+    }
+    available_models = []
+    for mdl in ("xgboost", "lightgbm", "catboost"):
+        path = summary_dir / f"{mdl}_evals_result.json"
+        if path.exists():
+            try:
+                with open(path, "r", encoding="utf-8") as f_in:
+                    data = json.load(f_in)
+                    available_models.append((mdl, data))
+            except Exception as exc:
+                logger.warning("Failed to load curves for %s: %s", mdl, exc)
+
+    if not available_models:
+        logger.warning("No model curves available to plot summary.")
+        return
+
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except Exception as exc:
+        logger.warning("Matplotlib unavailable, skip summary plot: %s", exc)
+        return
+
+    plt.figure(figsize=(10, 6))
+    for mdl, data in available_models:
+        color = model_colors.get(mdl, None)
+        train = data.get("train", [])
+        val = data.get("val", [])
+        metric_name = data.get("metric", "loss")
+        epochs_train = range(1, len(train) + 1)
+        epochs_val = range(1, len(val) + 1)
+        if train:
+            plt.plot(epochs_train, train, label=f"{mdl} train", color=color, linestyle="-")
+        if val:
+            plt.plot(epochs_val, val, label=f"{mdl} val", color=color, linestyle="--")
+        plt.ylabel(metric_name)
+
+    plt.title("Boosting Models - Train/Validation Logloss")
+    plt.xlabel("Epochs")
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+
+    summary_png = summary_dir / "training_curve_logloss_overview.png"
+    report_png = report_dir / "boosting_training_loss_overview.png"
+    plt.savefig(summary_png, dpi=300, bbox_inches="tight")
+    plt.savefig(report_png, dpi=300, bbox_inches="tight")
+    plt.close()
+    logger.info("Saved boosting summary plot to %s and %s", summary_png, report_png)
 
 
 def _get_preprocessing_paths(base_dir: Path) -> Dict[str, Path]:
@@ -355,7 +497,7 @@ def main():
         logger.info("  Skipping data loading; using cached preprocessing outputs in %s", preprocess_dir)
     else:
         if args.kaggle_max:
-            # Kaggle-max 模式：使用与 baseline 相同的加载与展开逻辑
+            # Kaggle-max  baseline 
             logger.info(f"Loading training data via src.utils.data_processing: {args.train_file}")
             train_df = dp.load_data(args.train_file, clean_text=True)
             logger.info(f"  Training data shape: {train_df.shape}")
@@ -373,7 +515,7 @@ def main():
             else:
                 raise ValueError("Training data must contain 'label' column")
         else:
-            # 严格模式：使用本地 JSONL loader
+            #  JSONL loader
             logger.info(f"Loading training data: {args.train_file}")
             train_df = load_jsonl(args.train_file)
             logger.info(f"  Training data shape: {train_df.shape}")
@@ -405,7 +547,7 @@ def main():
     
     if not preprocessing_loaded:
         # Extract user IDs for GroupKFold BEFORE feature engineering removes user columns
-        # 在特征工程删除用户字段之前先提取用户ID，用于 GroupKFold，避免退化为按样本索引分组
+        # ID GroupKFold
         train_groups = extract_user_id(train_df)
 
         # Prepare CamemBERT fused texts for reuse
@@ -558,7 +700,7 @@ def main():
     if preprocessing_loaded:
         logger.info("  Skipped feature engineering (using cached artifacts).")
     elif args.kaggle_max:
-        # Kaggle-max 模式：完全复用 baseline 的特征工程与列对齐逻辑
+        # Kaggle-max  baseline 
         logger.warning(
             "  Kaggle-max mode enabled: using src.utils.data_processing engineer_features "
             "and keeping user-level IDs/names as categorical features for higher LB score "
@@ -699,7 +841,7 @@ def main():
     logger.info("\n[Step 5] Extract User IDs for GroupKFold")
     logger.info("-" * 60)
     
-    # train_groups 已在特征工程之前从原始 train_df 中提取，确保真正按用户分组
+    # train_groups  train_df 
     logger.info(f"  Training: {train_groups.nunique()} unique users")
     
     # ========== Step 6: Hyperparameter Optimization ==========
@@ -744,7 +886,7 @@ def main():
         
         # Use default parameters
         if args.kaggle_max:
-            # Kaggle-max 模式：尽量对齐 xgboost_baseline 的默认参数（不使用 scale_pos_weight）
+            # Kaggle-max  xgboost_baseline  scale_pos_weight
             best_params = {
                 'objective': 'binary:logistic',
                 'eval_metric': 'logloss',
@@ -798,7 +940,7 @@ def main():
                 })
                 mean_best_iterations = best_params.get('iterations', 200)
             else:
-                # 严格模式：保留原有带 scale_pos_weight 的设置
+                #  scale_pos_weight 
                 negative_count = np.sum(y_train == 0)
                 positive_count = np.sum(y_train == 1)
                 scale_pos_weight = negative_count / positive_count if positive_count > 0 else 1.127
@@ -925,7 +1067,13 @@ def main():
     elif active_model == "lightgbm":
         monitor_model = create_lgbm_classifier(monitor_params)
         fit_kwargs = {
-            "eval_set": [(X_val_monitor, y_val_monitor), (X_test_monitor, y_test_monitor)],
+            "eval_set": [
+                (X_val_monitor, y_val_monitor),
+                (X_tr_monitor, y_tr_monitor),
+                (X_test_monitor, y_test_monitor),
+            ],
+            "eval_names": ["validation", "train", "test"],
+            "eval_train_metric": True,
         }
         if "eval_metric" not in monitor_params:
             fit_kwargs["eval_metric"] = "binary_logloss"
@@ -992,6 +1140,17 @@ def main():
         output_dir=monitoring_dir,
         test_metric_values=test_metric_values
     )
+    # Also emit an aggregated boosting summary plot (one color per model, train vs val)
+    try:
+        _save_and_plot_boosting_summary(
+            evals_result=evals_result,
+            monitoring_base=monitoring_base,
+            report_dir=PROJECT_ROOT / "report",
+            model_name=active_model,
+        )
+    except Exception as agg_exc:
+        logger.warning("Failed to generate boosting summary plot: %s", agg_exc)
+
     log_error_statistics(
         y_true=y_val_monitor,
         y_pred=y_val_pred,
@@ -1183,7 +1342,7 @@ def main():
     logger.info("-" * 60)
     
     if not args.kaggle_max:
-        # 严格模式：保持原有的 NaN 填充逻辑，避免训练/推理缺失模式不一致
+        #  NaN /
         # Handle missing values (XGBoost can handle NaN, but ensure consistency)
         # Fill NaN with median for numeric columns (only if column has valid values)
         for col in X_test.columns:
